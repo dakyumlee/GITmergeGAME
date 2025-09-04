@@ -1,38 +1,57 @@
 package com.gitmerge.controller;
 
-import com.gitmerge.entity.Match;
-import com.gitmerge.entity.Game;
-import com.gitmerge.entity.User;
-import com.gitmerge.service.MatchService;
-import com.gitmerge.service.GameService;
-import com.gitmerge.service.UserService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/matches")
-@RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class MatchController {
-    private final MatchService matchService;
-    private final GameService gameService;
-    private final UserService userService;
     
-    @PostMapping("/queue")
-    public ResponseEntity<Match> queueForMatch(@RequestParam Long gameId, 
-                                              @RequestParam String nickname) {
-        Game game = gameService.findBySeed(gameId.toString())
-                .orElseThrow(() -> new IllegalArgumentException("Game not found"));
-        User user = userService.findByNickname(nickname)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    @GetMapping("/rooms")
+    public ResponseEntity<?> getAvailableRooms(@RequestParam(required = false) Long gameId) {
+        // 임시 테스트 데이터
+        List<Map<String, Object>> rooms = new ArrayList<>();
         
-        Match match = matchService.createOrJoinMatch(game, user);
-        return ResponseEntity.ok(match);
+        Map<String, Object> room1 = Map.of(
+            "matchId", 1L,
+            "roomName", "easy-room-1234",
+            "currentCount", 2,
+            "maxCount", 8,
+            "participantNames", List.of("Player1", "Player2"),
+            "createdAt", "2025-09-04T14:30:00"
+        );
+        
+        Map<String, Object> room2 = Map.of(
+            "matchId", 2L,
+            "roomName", "normal-room-5678",
+            "currentCount", 1,
+            "maxCount", 6,
+            "participantNames", List.of("TestPlayer"),
+            "createdAt", "2025-09-04T14:35:00"
+        );
+        
+        rooms.add(room1);
+        rooms.add(room2);
+        
+        return ResponseEntity.ok(Map.of(
+            "rooms", rooms,
+            "totalRooms", rooms.size()
+        ));
     }
     
-    @PutMapping("/{matchId}/finish")
-    public ResponseEntity<Void> finishMatch(@PathVariable Long matchId) {
-        matchService.finishMatch(matchId);
-        return ResponseEntity.ok().build();
+    @PostMapping("/join")
+    public ResponseEntity<?> joinMatch(@RequestBody Map<String, Object> request) {
+        return ResponseEntity.ok(Map.of(
+            "matchId", 1L,
+            "roomName", "test-room-" + System.currentTimeMillis(),
+            "participantCount", 1,
+            "maxParticipants", 8,
+            "gameStarted", false,
+            "message", "방에 참가했습니다."
+        ));
     }
 }
