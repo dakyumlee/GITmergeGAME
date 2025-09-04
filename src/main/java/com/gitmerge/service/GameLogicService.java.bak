@@ -122,17 +122,9 @@ public class GameLogicService {
         return new GameResultWithAchievements(result, achievements);
     }
     
-    private String normalizeWhitespace(String code) {
-        return code.replaceAll("\\s+", " ")  // 연속 공백을 하나로
-                   .replaceAll("^\\s+|\\s+$", "")  // 앞뒤 공백 제거
-                   .replaceAll("\\s*\\{\\s*", " {")  // { 앞 공백 정리
-                   .replaceAll("\\s*\\}\\s*", "}")   // } 앞뒤 공백 정리
-                   .replaceAll("\\s*;\\s*", ";")      // ; 앞뒤 공백 정리
-                   .trim();
-    }
     private boolean validateResolution(ConflictBlock conflict, String resolution) {
-        String normalized = normalizeWhitespace(resolution);
-        String expected = normalizeWhitespace(conflict.getExpectedResolution());
+        String normalized = resolution.replaceAll("\\s+", " ").trim();
+        String expected = conflict.getExpectedResolution().replaceAll("\\s+", " ").trim();
         return normalized.equals(expected);
     }
     
