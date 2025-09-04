@@ -1,17 +1,19 @@
 spring:
+  profiles:
+    active: local
   datasource:
-    url: jdbc:oracle:thin:@localhost:1521:XE
+    url: jdbc:postgresql://localhost:5432/gitmerge
     username: gitmerge
     password: password
-    driver-class-name: oracle.jdbc.OracleDriver
+    driver-class-name: org.postgresql.Driver
   
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.OracleDialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     
 server:
@@ -21,3 +23,25 @@ logging:
   level:
     com.gitmerge: DEBUG
     org.hibernate.SQL: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: heroku
+  datasource:
+    url: ${DATABASE_URL}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    com.gitmerge: INFO
