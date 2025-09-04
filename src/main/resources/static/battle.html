@@ -382,9 +382,6 @@
            toggleReady() {
                if (!this.stompClient?.connected) return;
                
-               this.myReadyStatus = !this.myReadyStatus;
-               document.getElementById('readyBtn').textContent = this.myReadyStatus ? '준비 취소' : '준비하기';
-               
                this.stompClient.send('/app/room/ready', {}, JSON.stringify({
                    nickname: this.nickname
                }));
@@ -405,6 +402,7 @@
                }
                this.currentRoomCode = '';
                this.myReadyStatus = false;
+               document.getElementById('readyBtn').textContent = '준비하기';
            }
            
            connectWebSocket(onReady) {
@@ -422,6 +420,7 @@
                    onReady?.();
                }, (error) => {
                    this.updateStatus('연결 실패');
+                   console.error('WebSocket error:', error);
                });
            }
            
@@ -454,6 +453,7 @@
            }
            
            handleRoomMessage(data) {
+               console.log('Room message received:', data);
                switch (data.type) {
                    case 'PLAYER_JOINED':
                        this.handlePlayerJoined(data);
@@ -517,17 +517,27 @@
            
            checkGameStartCondition(players) {
                const playerArray = Object.values(players || {});
-               const allReady = playerArray.length > 0 && playerArray.every(p => p.ready);
-               const hasMinPlayers = playerArray.length >= 2;
+               const allReady = playerArray.length >= 1 && playerArray.every(p => p.ready);
+               const hasMinPlayers = playerArray.length >= 1; // 테스트를 위해 1명으로 변경
+               
+               console.log('Game start check:', {
+                   isHost: this.isHost,
+                   allReady: allReady,
+                   hasMinPlayers: hasMinPlayers,
+                   playerCount: playerArray.length,
+                   players: playerArray
+               });
                
                const startBtn = document.getElementById('startGameBtn');
                if (this.isHost && allReady && hasMinPlayers) {
                    startBtn.style.display = 'block';
-                   this.updateStatus('모든 플레이어가 준비되었습니다! 게임을 시작할 수 있습니다.', 'roomStatus');
+                   this.updateStatus('게임을 시작할 수 있습니다!', 'roomStatus');
                } else {
                    startBtn.style.display = 'none';
                    if (this.isHost && hasMinPlayers && !allReady) {
                        this.updateStatus('모든 플레이어가 준비될 때까지 기다려주세요.', 'roomStatus');
+                   } else if (this.isHost && !hasMinPlayers) {
+                       this.updateStatus('최소 1명의 플레이어가 필요합니다.', 'roomStatus');
                    }
                }
            }
