@@ -1,228 +1,576 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>Git Merge Battle</title>
-    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-    <style>
-        body { font-family: Arial; background: #111; color: #fff; margin: 0; padding: 20px; }
-        .screen { display: none; max-width: 600px; margin: 0 auto; padding: 40px; background: #222; border-radius: 8px; }
-        .screen.active { display: block; }
-        .title { text-align: center; font-size: 2rem; margin-bottom: 30px; }
-        input, button { padding: 15px; font-size: 1rem; border-radius: 6px; border: 1px solid #444; background: #333; color: #fff; margin: 10px 0; width: 100%; box-sizing: border-box; }
-        button:hover { background: #555; cursor: pointer; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .room-info { background: #333; padding: 30px; margin: 20px 0; text-align: center; border-radius: 8px; }
-        .room-code { font-size: 2rem; font-family: monospace; margin: 10px 0; }
-        .player-list { background: #444; padding: 20px; border-radius: 6px; margin: 20px 0; }
-        .player-item { display: flex; justify-content: space-between; padding: 10px; margin: 5px 0; background: #555; border-radius: 4px; }
-        #status { color: #0f0; margin: 20px 0; text-align: center; font-size: 14px; min-height: 20px; }
-    </style>
+   <meta charset="UTF-8">
+   <title>Git Merge Battle</title>
+   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+   <style>
+       * { 
+           margin: 0; 
+           padding: 0; 
+           box-sizing: border-box; 
+       }
+
+       body {
+           font-family: 'Pretendard', sans-serif;
+           background: #1a1a1a;
+           color: #ffffff;
+           line-height: 1.6;
+           min-height: 100vh;
+           display: flex;
+           align-items: center;
+           justify-content: center;
+       }
+
+       .container {
+           width: 100%;
+           max-width: 500px;
+           padding: 40px;
+       }
+
+       .screen {
+           display: none;
+           text-align: center;
+       }
+
+       .screen.active {
+           display: block;
+           animation: fadeIn 0.3s ease-out;
+       }
+
+       @keyframes fadeIn {
+           from { opacity: 0; transform: translateY(10px); }
+           to { opacity: 1; transform: translateY(0); }
+       }
+
+       .title {
+           font-size: 2.5rem;
+           font-weight: 700;
+           margin-bottom: 3rem;
+           color: #ffffff;
+       }
+
+       .subtitle {
+           color: #888888;
+           margin-bottom: 2rem;
+           font-size: 1rem;
+       }
+
+       input {
+           width: 100%;
+           padding: 16px 20px;
+           font-size: 1rem;
+           border-radius: 8px;
+           border: 1px solid #333333;
+           background: #2a2a2a;
+           color: #ffffff;
+           margin: 12px 0;
+           transition: all 0.3s ease;
+           font-family: inherit;
+       }
+
+       input:focus {
+           outline: none;
+           border-color: #555555;
+           background: #333333;
+       }
+
+       input::placeholder {
+           color: #666666;
+       }
+
+       button {
+           width: 100%;
+           padding: 16px 20px;
+           font-size: 1rem;
+           border-radius: 8px;
+           border: 1px solid #333333;
+           background: #2a2a2a;
+           color: #ffffff;
+           margin: 12px 0;
+           cursor: pointer;
+           transition: all 0.3s ease;
+           font-family: inherit;
+           font-weight: 500;
+       }
+
+       button:hover {
+           background: #3a3a3a;
+           border-color: #444444;
+       }
+
+       button:disabled {
+           background: #1a1a1a;
+           color: #555555;
+           cursor: not-allowed;
+       }
+
+       .btn-group {
+           display: grid;
+           grid-template-columns: 1fr 1fr;
+           gap: 12px;
+           margin: 20px 0;
+       }
+
+       .back-btn {
+           background: #333333;
+           border-color: #444444;
+       }
+
+       .back-btn:hover {
+           background: #404040;
+       }
+
+       .room-info {
+           background: #2a2a2a;
+           padding: 2rem;
+           margin: 2rem 0;
+           border-radius: 8px;
+           border: 1px solid #333333;
+       }
+
+       .room-code-label {
+           color: #888888;
+           font-size: 0.9rem;
+           margin-bottom: 1rem;
+       }
+
+       .room-code {
+           font-size: 2.5rem;
+           font-family: 'SF Mono', 'Courier New', monospace;
+           font-weight: 700;
+           color: #ffffff;
+           margin: 1rem 0;
+           letter-spacing: 4px;
+       }
+
+       .room-name {
+           font-size: 1.2rem;
+           color: #cccccc;
+           margin-bottom: 1rem;
+       }
+
+       .copy-btn {
+           width: auto;
+           padding: 8px 16px;
+           font-size: 0.9rem;
+           background: #404040;
+           border-color: #555555;
+       }
+
+       .copy-btn:hover {
+           background: #4a4a4a;
+       }
+
+       .player-list {
+           background: #2a2a2a;
+           padding: 1.5rem;
+           border-radius: 8px;
+           margin: 2rem 0;
+           border: 1px solid #333333;
+       }
+
+       .player-item {
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+           padding: 12px 0;
+           border-bottom: 1px solid #333333;
+       }
+
+       .player-item:last-child {
+           border-bottom: none;
+       }
+
+       .player-name {
+           font-weight: 500;
+           color: #ffffff;
+       }
+
+       .host-badge {
+           background: #555555;
+           color: #ffffff;
+           padding: 2px 8px;
+           border-radius: 12px;
+           font-size: 0.8rem;
+           font-weight: 600;
+           margin-left: 8px;
+       }
+
+       .player-status {
+           padding: 4px 12px;
+           border-radius: 16px;
+           font-size: 0.85rem;
+           font-weight: 500;
+       }
+
+       .status-ready {
+           background: #444444;
+           color: #ffffff;
+       }
+
+       .status-waiting {
+           background: #333333;
+           color: #888888;
+       }
+
+       .start-btn {
+           background: #404040;
+           border-color: #555555;
+       }
+
+       .start-btn:hover {
+           background: #4a4a4a;
+       }
+
+       .status-message {
+           text-align: center;
+           padding: 1rem;
+           margin: 1rem 0;
+           border-radius: 8px;
+           background: #2a2a2a;
+           border: 1px solid #333333;
+           color: #cccccc;
+           min-height: 20px;
+           font-size: 0.9rem;
+       }
+
+       .game-screen {
+           text-align: center;
+           padding: 2rem 0;
+       }
+
+       .game-screen h1 {
+           margin-bottom: 2rem;
+           color: #ffffff;
+           font-size: 2rem;
+       }
+
+       .game-screen p {
+           font-size: 1.1rem;
+           color: #888888;
+           margin-bottom: 2rem;
+       }
+   </style>
 </head>
 <body>
-    <div class="screen active" id="menuScreen">
-        <h1 class="title">Git Merge Battle</h1>
-        <p>닉네임: <strong id="displayNickname">로딩중...</strong></p>
-        <div class="btn-group">
-            <button id="createRoomBtn">방 만들기</button>
-            <button id="joinRoomBtn">방 참가</button>
-        </div>
-        <button onclick="location.href='index.html'">메인으로</button>
-        <div id="status"></div>
-    </div>
+   <div class="container">
+       <div class="screen active" id="menuScreen">
+           <h1 class="title">Git Merge Battle</h1>
+           <p class="subtitle">닉네임: <strong id="displayNickname">입력하세요</strong></p>
+           
+           <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" maxlength="16">
+           
+           <div class="btn-group">
+               <button id="createRoomBtn">방 만들기</button>
+               <button id="joinRoomBtn">방 참가하기</button>
+           </div>
+           
+           <button onclick="location.href='index.html'" class="back-btn">메인 메뉴로</button>
+           <div class="status-message" id="status"></div>
+       </div>
 
-    <div class="screen" id="createScreen">
-        <h1 class="title">방 만들기</h1>
-        <input type="text" id="roomNameInput" placeholder="방 이름 입력" value="내 방">
-        <button id="confirmCreateBtn">방 생성</button>
-        <button id="backFromCreateBtn">뒤로가기</button>
-    </div>
+       <div class="screen" id="createScreen">
+           <h1 class="title">방 만들기</h1>
+           <input type="text" id="roomNameInput" placeholder="방 이름을 입력하세요" value="내 방" maxlength="20">
+           <button id="confirmCreateBtn">방 생성하기</button>
+           <button id="backFromCreateBtn" class="back-btn">뒤로가기</button>
+       </div>
 
-    <div class="screen" id="joinScreen">
-        <h1 class="title">방 참가</h1>
-        <input type="text" id="roomCodeInput" placeholder="방 코드 입력 (6자리)" maxlength="6">
-        <button id="confirmJoinBtn">입장하기</button>
-        <button id="backFromJoinBtn">뒤로가기</button>
-    </div>
+       <div class="screen" id="joinScreen">
+           <h1 class="title">방 참가하기</h1>
+           <input type="text" id="roomCodeInput" placeholder="6자리 방 코드 입력" maxlength="6" style="text-transform: uppercase;">
+           <button id="confirmJoinBtn">입장하기</button>
+           <button id="backFromJoinBtn" class="back-btn">뒤로가기</button>
+       </div>
 
-    <div class="screen" id="roomScreen">
-        <h1 class="title">대기실</h1>
-        <div class="room-info">
-            <div>방 코드</div>
-            <div class="room-code" id="displayRoomCode">------</div>
-            <div id="displayRoomName">대기중...</div>
-            <button onclick="copyRoomCode()" style="width: auto; padding: 8px 16px;">코드 복사</button>
-        </div>
-        <div class="player-list" id="playerList"></div>
-        <button id="readyBtn">준비하기</button>
-        <button id="leaveBtn">방 나가기</button>
-    </div>
+       <div class="screen" id="roomScreen">
+           <h1 class="title">대기실</h1>
+           
+           <div class="room-info">
+               <div class="room-code-label">방 코드</div>
+               <div class="room-code" id="displayRoomCode">------</div>
+               <div class="room-name" id="displayRoomName">대기 중...</div>
+               <button class="copy-btn" onclick="copyRoomCode()">코드 복사</button>
+           </div>
+           
+           <div class="player-list" id="playerList"></div>
+           
+           <button id="readyBtn">준비하기</button>
+           <button id="startGameBtn" class="start-btn" style="display: none;">게임 시작</button>
+           <button id="leaveBtn" class="back-btn">방 나가기</button>
+           
+           <div class="status-message" id="roomStatus"></div>
+       </div>
 
-    <script>
-        let stompClient = null;
-        let nickname = localStorage.getItem('gitmerge_nickname');
-        let currentRoomCode = '';
-        
-        if (!nickname) {
-            alert('닉네임이 설정되지 않았습니다');
-            window.location.href = 'index.html';
-        } else {
-            document.getElementById('displayNickname').textContent = nickname;
-        }
-        
-        function updateStatus(msg) {
-            document.getElementById('status').textContent = msg;
-            console.log('[STATUS]', msg);
-        }
-        
-        document.getElementById('createRoomBtn').addEventListener('click', () => showScreen('createScreen'));
-        document.getElementById('joinRoomBtn').addEventListener('click', () => showScreen('joinScreen'));
-        
-        document.getElementById('confirmCreateBtn').addEventListener('click', function() {
-            const roomName = document.getElementById('roomNameInput').value.trim() || '새로운 방';
-            createRoom(roomName);
-        });
-        
-        document.getElementById('confirmJoinBtn').addEventListener('click', function() {
-            const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
-            if (roomCode.length === 6) {
-                joinRoom(roomCode);
-            } else {
-                alert('6자리 방 코드를 입력하세요');
-            }
-        });
-        
-        document.getElementById('backFromCreateBtn').addEventListener('click', () => showScreen('menuScreen'));
-        document.getElementById('backFromJoinBtn').addEventListener('click', () => showScreen('menuScreen'));
-        
-        document.getElementById('readyBtn').addEventListener('click', function() {
-            updateStatus('준비 상태 변경 중...');
-            if (stompClient && stompClient.connected) {
-                stompClient.send('/app/room/ready', {}, JSON.stringify({nickname: nickname}));
-            } else {
-                updateStatus('연결되지 않음');
-            }
-        });
-        
-        document.getElementById('leaveBtn').addEventListener('click', function() {
-            showScreen('menuScreen');
-            if (stompClient && stompClient.connected) {
-                stompClient.disconnect();
-            }
-        });
-        
-        function createRoom(roomName) {
-            updateStatus('방 생성 중...');
-            connectWebSocket(() => {
-                stompClient.send('/app/room/create', {}, JSON.stringify({
-                    nickname: nickname,
-                    roomName: roomName
-                }));
-            });
-        }
-        
-        function joinRoom(roomCode) {
-            updateStatus('방 참가 중...');
-            connectWebSocket(() => {
-                stompClient.subscribe('/topic/room/' + roomCode, handleRoomMessage);
-                stompClient.send('/app/room/join', {}, JSON.stringify({
-                    nickname: nickname,
-                    roomCode: roomCode
-                }));
-            });
-        }
-        
-        function connectWebSocket(onReady) {
-            if (stompClient && stompClient.connected) {
-                onReady();
-                return;
-            }
-            
-            const socket = new SockJS('/ws/match');
-            stompClient = Stomp.over(socket);
-            
-            stompClient.connect({}, function() {
-                updateStatus('WebSocket 연결됨');
-                
-                stompClient.subscribe('/topic/room-created', function(message) {
-                    const data = JSON.parse(message.body);
-                    if (data.creator === nickname) {
-                        handleRoomCreated(data);
-                    }
-                });
-                
-                stompClient.subscribe('/user/queue/error', function(message) {
-                    const data = JSON.parse(message.body);
-                    updateStatus('오류: ' + data.message);
-                    alert(data.message);
-                });
-                
-                if (onReady) onReady();
-            });
-        }
-        
-        function handleRoomCreated(data) {
-            currentRoomCode = data.roomCode;
-            document.getElementById('displayRoomCode').textContent = data.roomCode;
-            document.getElementById('displayRoomName').textContent = data.roomName;
-            updatePlayerList(data.players);
-            updateStatus('방 생성 완료');
-            showScreen('roomScreen');
-            
-            stompClient.subscribe('/topic/room/' + data.roomCode, handleRoomMessage);
-        }
-        
-        function handleRoomMessage(message) {
-            console.log('[ROOM MESSAGE]', message.body);
-            const data = JSON.parse(message.body);
-            
-            if (data.type === 'PLAYER_JOINED') {
-                currentRoomCode = data.roomCode;
-                document.getElementById('displayRoomCode').textContent = data.roomCode;
-                document.getElementById('displayRoomName').textContent = data.roomName;
-                updatePlayerList(data.players);
-                updateStatus('방 입장 완료');
-                showScreen('roomScreen');
-            } else if (data.type === 'PLAYER_READY') {
-                updatePlayerList(data.players);
-                updateStatus(data.player + '님이 준비 상태를 변경했습니다');
-            }
-        }
-        
-        function updatePlayerList(players) {
-            const playerList = document.getElementById('playerList');
-            playerList.innerHTML = '';
-            
-            if (!players || players.length === 0) {
-                playerList.innerHTML = '<div class="player-item">플레이어가 없습니다</div>';
-                return;
-            }
-            
-            Object.values(players).forEach(player => {
-                const item = document.createElement('div');
-                item.className = 'player-item';
-                item.innerHTML = `
-                    <span>${player.nickname} ${player.isHost ? '(방장)' : ''}</span>
-                    <span style="color: ${player.ready ? '#0f0' : '#888'}">${player.ready ? '준비완료' : '대기중'}</span>
-                `;
-                playerList.appendChild(item);
-            });
-        }
-        
-        function copyRoomCode() {
-            if (currentRoomCode) {
-                navigator.clipboard.writeText(currentRoomCode);
-                alert('방 코드 복사됨: ' + currentRoomCode);
-            }
-        }
-        
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.remove('active');
-            });
-            document.getElementById(screenId).classList.add('active');
-        }
-    </script>
+       <div class="screen" id="gameScreen">
+           <div class="game-screen">
+               <h1>게임 시작!</h1>
+               <p>실시간 대전이 곧 시작됩니다...</p>
+               <button onclick="alert('게임 기능 개발 중입니다!')">테스트</button>
+           </div>
+       </div>
+   </div>
+
+   <script>
+       class BattleGame {
+           constructor() {
+               this.stompClient = null;
+               this.nickname = localStorage.getItem('gitmerge_nickname') || '';
+               this.currentRoomCode = '';
+               this.isHost = false;
+               
+               this.initializeUI();
+               this.bindEvents();
+           }
+           
+           initializeUI() {
+               const nicknameInput = document.getElementById('nicknameInput');
+               const displayNickname = document.getElementById('displayNickname');
+               
+               if (this.nickname) {
+                   nicknameInput.value = this.nickname;
+                   displayNickname.textContent = this.nickname;
+               }
+               
+               nicknameInput.addEventListener('input', (e) => {
+                   this.nickname = e.target.value.trim();
+                   displayNickname.textContent = this.nickname || '입력하세요';
+                   localStorage.setItem('gitmerge_nickname', this.nickname);
+               });
+           }
+           
+           bindEvents() {
+               const eventMap = {
+                   'createRoomBtn': () => this.validateAndProceed('createScreen'),
+                   'joinRoomBtn': () => this.validateAndProceed('joinScreen'),
+                   'confirmCreateBtn': () => this.createRoom(),
+                   'confirmJoinBtn': () => this.joinRoom(),
+                   'backFromCreateBtn': () => this.showScreen('menuScreen'),
+                   'backFromJoinBtn': () => this.showScreen('menuScreen'),
+                   'readyBtn': () => this.toggleReady(),
+                   'startGameBtn': () => this.startGame(),
+                   'leaveBtn': () => this.leaveRoom()
+               };
+               
+               Object.entries(eventMap).forEach(([id, handler]) => {
+                   document.getElementById(id).addEventListener('click', handler);
+               });
+           }
+           
+           validateAndProceed(screenId) {
+               if (!this.nickname) {
+                   alert('닉네임을 입력하세요');
+                   document.getElementById('nicknameInput').focus();
+                   return;
+               }
+               this.showScreen(screenId);
+           }
+           
+           updateStatus(message, elementId = 'status') {
+               const element = document.getElementById(elementId);
+               if (element) {
+                   element.textContent = message;
+               }
+           }
+           
+           createRoom() {
+               const roomName = document.getElementById('roomNameInput').value.trim() || '새로운 방';
+               this.isHost = true;
+               this.updateStatus('방 생성 중...');
+               
+               this.connectWebSocket(() => {
+                   this.stompClient.send('/app/room/create', {}, JSON.stringify({
+                       nickname: this.nickname,
+                       roomName: roomName
+                   }));
+               });
+           }
+           
+           joinRoom() {
+               const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+               
+               if (roomCode.length !== 6) {
+                   alert('6자리 방 코드를 입력하세요');
+                   return;
+               }
+               
+               this.isHost = false;
+               this.updateStatus('방 참가 중...');
+               
+               this.connectWebSocket(() => {
+                   this.stompClient.subscribe(`/topic/room/${roomCode}`, (message) => {
+                       this.handleRoomMessage(JSON.parse(message.body));
+                   });
+                   
+                   this.stompClient.send('/app/room/join', {}, JSON.stringify({
+                       nickname: this.nickname,
+                       roomCode: roomCode
+                   }));
+               });
+           }
+           
+           toggleReady() {
+               if (!this.stompClient?.connected) return;
+               
+               this.stompClient.send('/app/room/ready', {}, JSON.stringify({
+                   nickname: this.nickname
+               }));
+           }
+           
+           startGame() {
+               if (!this.stompClient?.connected || !this.isHost) return;
+               
+               this.stompClient.send('/app/room/start', {}, JSON.stringify({
+                   nickname: this.nickname
+               }));
+           }
+           
+           leaveRoom() {
+               this.showScreen('menuScreen');
+               if (this.stompClient?.connected) {
+                   this.stompClient.disconnect();
+               }
+               this.currentRoomCode = '';
+           }
+           
+           connectWebSocket(onReady) {
+               if (this.stompClient?.connected) {
+                   onReady?.();
+                   return;
+               }
+               
+               const socket = new SockJS('/ws/match');
+               this.stompClient = Stomp.over(socket);
+               
+               this.stompClient.connect({}, () => {
+                   this.updateStatus('연결됨');
+                   this.setupSubscriptions();
+                   onReady?.();
+               }, (error) => {
+                   this.updateStatus('연결 실패');
+               });
+           }
+           
+           setupSubscriptions() {
+               this.stompClient.subscribe('/topic/room-created', (message) => {
+                   const data = JSON.parse(message.body);
+                   if (data.creator === this.nickname) {
+                       this.handleRoomCreated(data);
+                   }
+               });
+               
+               this.stompClient.subscribe('/user/queue/error', (message) => {
+                   const data = JSON.parse(message.body);
+                   this.updateStatus('오류: ' + data.message);
+                   alert(data.message);
+               });
+           }
+           
+           handleRoomCreated(data) {
+               this.currentRoomCode = data.roomCode;
+               document.getElementById('displayRoomCode').textContent = data.roomCode;
+               document.getElementById('displayRoomName').textContent = data.roomName;
+               this.updatePlayerList(data.players);
+               this.updateStatus('방 생성 완료');
+               this.showScreen('roomScreen');
+               
+               this.stompClient.subscribe(`/topic/room/${data.roomCode}`, (message) => {
+                   this.handleRoomMessage(JSON.parse(message.body));
+               });
+           }
+           
+           handleRoomMessage(data) {
+               switch (data.type) {
+                   case 'PLAYER_JOINED':
+                       this.handlePlayerJoined(data);
+                       break;
+                   case 'PLAYER_READY':
+                       this.handlePlayerReady(data);
+                       break;
+                   case 'GAME_START':
+                       this.handleGameStart();
+                       break;
+               }
+           }
+           
+           handlePlayerJoined(data) {
+               this.currentRoomCode = data.roomCode;
+               document.getElementById('displayRoomCode').textContent = data.roomCode;
+               document.getElementById('displayRoomName').textContent = data.roomName;
+               this.updatePlayerList(data.players);
+               this.updateStatus('방 입장 완료', 'roomStatus');
+               this.showScreen('roomScreen');
+           }
+           
+           handlePlayerReady(data) {
+               this.updatePlayerList(data.players);
+               this.updateStatus(data.player + '님이 준비 상태를 변경했습니다', 'roomStatus');
+               this.checkGameStartCondition(data.players);
+           }
+           
+           handleGameStart() {
+               this.updateStatus('게임 시작!', 'roomStatus');
+               this.showScreen('gameScreen');
+           }
+           
+           updatePlayerList(players) {
+               const playerList = document.getElementById('playerList');
+               const playerArray = Object.values(players || {});
+               
+               if (playerArray.length === 0) {
+                   playerList.innerHTML = '<div style="text-align: center; color: #666666;">플레이어가 없습니다</div>';
+                   return;
+               }
+               
+               playerList.innerHTML = playerArray.map(player => `
+                   <div class="player-item">
+                       <div class="player-name">
+                           ${player.nickname}
+                           ${player.isHost ? '<span class="host-badge">방장</span>' : ''}
+                       </div>
+                       <div class="player-status ${player.ready ? 'status-ready' : 'status-waiting'}">
+                           ${player.ready ? '준비완료' : '대기중'}
+                       </div>
+                   </div>
+               `).join('');
+           }
+           
+           checkGameStartCondition(players) {
+               const playerArray = Object.values(players || {});
+               const allReady = playerArray.every(p => p.ready);
+               const hasMinPlayers = playerArray.length >= 2;
+               
+               const startBtn = document.getElementById('startGameBtn');
+               startBtn.style.display = (this.isHost && allReady && hasMinPlayers) ? 'block' : 'none';
+               
+               if (allReady && hasMinPlayers) {
+                   this.updateStatus('모든 플레이어가 준비되었습니다!', 'roomStatus');
+               }
+           }
+           
+           showScreen(screenId) {
+               document.querySelectorAll('.screen').forEach(screen => {
+                   screen.classList.remove('active');
+               });
+               document.getElementById(screenId).classList.add('active');
+           }
+       }
+       
+       function copyRoomCode() {
+           const game = window.battleGame;
+           if (game?.currentRoomCode) {
+               navigator.clipboard.writeText(game.currentRoomCode).then(() => {
+                   alert('방 코드가 복사되었습니다: ' + game.currentRoomCode);
+               });
+           }
+       }
+       
+       document.addEventListener('DOMContentLoaded', () => {
+           window.battleGame = new BattleGame();
+       });
+   </script>
 </body>
 </html>
