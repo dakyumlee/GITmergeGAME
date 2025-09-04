@@ -1,505 +1,560 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Git Merge Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Pretendard', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .screen {
-            display: none;
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        .screen.active {
-            display: block;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #4a5568;
-            margin-bottom: 10px;
-        }
-        .character-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .character-card {
-            background: #f8f9fa;
-            border: 3px solid transparent;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .character-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .character-card.selected {
-            border-color: #667eea;
-            background: #eef2ff;
-        }
-        .character-emoji {
-            font-size: 4rem;
-            margin-bottom: 15px;
-        }
-        .character-name {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 10px;
-        }
-        .character-ability {
-            font-size: 0.9rem;
-            color: #718096;
-            margin-bottom: 15px;
-        }
-        .character-stats {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-        }
-        .stat {
-            text-align: center;
-        }
-        .stat-value {
-            font-weight: 600;
-            color: #667eea;
-        }
-        .stat-label {
-            font-size: 0.8rem;
-            color: #a0aec0;
-        }
-        .btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .btn:hover {
-            background: #5a67d8;
-            transform: translateY(-2px);
-        }
-        .btn:disabled {
-            background: #cbd5e0;
-            cursor: not-allowed;
-            transform: none;
-        }
-        .btn-group {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 30px;
-        }
-        .difficulty-selector {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin: 30px 0;
-        }
-        .difficulty-btn {
-            padding: 10px 20px;
-            border: 2px solid #e2e8f0;
-            background: white;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .difficulty-btn.selected {
-            border-color: #667eea;
-            background: #eef2ff;
-            color: #667eea;
-        }
-        .game-area {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 30px;
-            margin-bottom: 20px;
-        }
-        .conflict-area {
-            background: #2d3748;
-            color: #e2e8f0;
-            padding: 20px;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-        }
-        .code-editor {
-            width: 100%;
-            min-height: 400px;
-            background: #1a202c;
-            color: #e2e8f0;
-            border: none;
-            padding: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            resize: vertical;
-            border-radius: 5px;
-        }
-        .code-editor:focus {
-            outline: 2px solid #667eea;
-        }
-        .sidebar {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-        }
-        .timer, .score {
-            font-size: 1.5rem;
-            font-weight: 600;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        .selected-character {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .selected-character-emoji {
-            font-size: 3rem;
-            margin-bottom: 10px;
-        }
-        .controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-direction: column;
-        }
-        .file-header {
-            background: #4a5568;
-            color: #e2e8f0;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px 5px 0 0;
-            font-weight: bold;
-        }
-        .current-status {
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .hint {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-        }
-        .result-message {
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-    </style>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Git Merge Game</title>
+   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+   <style>
+       * {
+           margin: 0;
+           padding: 0;
+           box-sizing: border-box;
+       }
+       
+       body {
+           font-family: 'Pretendard', sans-serif;
+           background: #1a1a1a;
+           color: #333;
+           min-height: 100vh;
+       }
+       
+       .container {
+           max-width: 1200px;
+           margin: 0 auto;
+           padding: 20px;
+       }
+       
+       .screen {
+           display: none;
+           background: white;
+           border-radius: 20px;
+           padding: 40px;
+           box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+       }
+       
+       .screen.active {
+           display: block;
+       }
+       
+       .header {
+           text-align: center;
+           margin-bottom: 40px;
+       }
+       
+       .header h1 {
+           font-size: 2.5rem;
+           font-weight: 700;
+           color: #4a5568;
+           margin-bottom: 10px;
+       }
+       
+       .character-grid {
+           display: grid;
+           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+           gap: 20px;
+           margin-bottom: 30px;
+       }
+       
+       .character-card {
+           background: #f8f9fa;
+           border: 3px solid transparent;
+           border-radius: 15px;
+           padding: 20px;
+           text-align: center;
+           cursor: pointer;
+           transition: all 0.3s ease;
+       }
+       
+       .character-card:hover {
+           transform: translateY(-5px);
+           box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+       }
+       
+       .character-card.selected {
+           border-color: #667eea;
+           background: #eef2ff;
+       }
+       
+       .character-emoji {
+           font-size: 4rem;
+           margin-bottom: 15px;
+       }
+       
+       .character-name {
+           font-size: 1.3rem;
+           font-weight: 600;
+           color: #2d3748;
+           margin-bottom: 10px;
+       }
+       
+       .character-ability {
+           font-size: 0.9rem;
+           color: #718096;
+           margin-bottom: 15px;
+       }
+       
+       .character-stats {
+           display: flex;
+           justify-content: space-around;
+           margin-top: 15px;
+       }
+       
+       .stat {
+           text-align: center;
+       }
+       
+       .stat-value {
+           font-weight: 600;
+           color: #667eea;
+       }
+       
+       .stat-label {
+           font-size: 0.8rem;
+           color: #a0aec0;
+       }
+       
+       .btn {
+           background: #667eea;
+           color: white;
+           border: none;
+           padding: 15px 30px;
+           border-radius: 10px;
+           font-size: 1.1rem;
+           font-weight: 600;
+           cursor: pointer;
+           transition: all 0.3s ease;
+       }
+       
+       .btn:hover {
+           background: #5a67d8;
+           transform: translateY(-2px);
+       }
+       
+       .btn:disabled {
+           background: #cbd5e0;
+           cursor: not-allowed;
+           transform: none;
+       }
+       
+       .btn-group {
+           display: flex;
+           gap: 15px;
+           justify-content: center;
+           margin-top: 30px;
+       }
+       
+       .difficulty-selector {
+           display: flex;
+           gap: 10px;
+           justify-content: center;
+           margin: 30px 0;
+       }
+       
+       .difficulty-btn {
+           padding: 10px 20px;
+           border: 2px solid #e2e8f0;
+           background: white;
+           border-radius: 10px;
+           cursor: pointer;
+           transition: all 0.3s ease;
+       }
+       
+       .difficulty-btn.selected {
+           border-color: #667eea;
+           background: #eef2ff;
+           color: #667eea;
+       }
+       
+       .game-area {
+           display: grid;
+           grid-template-columns: 1fr 300px;
+           gap: 30px;
+       }
+       
+       .conflict-area {
+           background: #2d3748;
+           color: #e2e8f0;
+           padding: 20px;
+           border-radius: 10px;
+           font-family: 'Courier New', monospace;
+       }
+       
+       .file-header {
+           background: #4a5568;
+           color: #e2e8f0;
+           padding: 10px;
+           margin-bottom: 15px;
+           border-radius: 5px;
+           font-weight: bold;
+       }
+       
+       .code-editor {
+           width: 100%;
+           min-height: 400px;
+           background: #1a202c;
+           color: #e2e8f0;
+           border: none;
+           padding: 20px;
+           font-family: 'Courier New', monospace;
+           font-size: 14px;
+           line-height: 1.5;
+           border-radius: 5px;
+       }
+       
+       .code-editor:focus {
+           outline: 2px solid #667eea;
+       }
+       
+       .hint {
+           background: #fff3cd;
+           border: 1px solid #ffeaa7;
+           color: #856404;
+           padding: 10px;
+           border-radius: 5px;
+           margin-top: 15px;
+           font-size: 0.9rem;
+       }
+       
+       .sidebar {
+           background: #f8f9fa;
+           padding: 20px;
+           border-radius: 10px;
+       }
+       
+       .selected-character {
+           text-align: center;
+           margin-bottom: 20px;
+       }
+       
+       .selected-character-emoji {
+           font-size: 3rem;
+           margin-bottom: 10px;
+       }
+       
+       .current-status,
+       .timer,
+       .score {
+           font-size: 1.2rem;
+           font-weight: 600;
+           text-align: center;
+           margin-bottom: 15px;
+       }
+       
+       .controls {
+           display: flex;
+           flex-direction: column;
+           gap: 10px;
+       }
+       
+       .result-message {
+           margin-top: 15px;
+           padding: 10px;
+           border-radius: 5px;
+           text-align: center;
+           font-weight: bold;
+       }
+       
+       .result-message.success {
+           background: #d4edda;
+           color: #155724;
+           border: 1px solid #c3e6cb;
+       }
+       
+       .result-message.error {
+           background: #f8d7da;
+           color: #721c24;
+           border: 1px solid #f5c6cb;
+       }
+   </style>
 </head>
 <body>
-    <div class="container">
-        <div class="screen active" id="characterScreen">
-            <div class="header">
-                <h1>🎮 캐릭터 선택</h1>
-                <p>당신의 개발자 페르소나를 선택하세요</p>
-            </div>
-            <div class="character-grid" id="characterGrid"></div>
-            <div class="btn-group">
-                <button class="btn" id="confirmCharacterBtn" disabled>캐릭터 확정</button>
-            </div>
-        </div>
+   <div class="container">
+       <div class="screen active" id="characterScreen">
+           <div class="header">
+               <h1>캐릭터 선택</h1>
+               <p>당신의 개발자 페르소나를 선택하세요</p>
+           </div>
+           <div class="character-grid" id="characterGrid"></div>
+           <div class="btn-group">
+               <button class="btn" id="confirmCharacterBtn" disabled>캐릭터 확정</button>
+           </div>
+       </div>
 
-        <div class="screen" id="difficultyScreen">
-            <div class="header">
-                <h1>⚡ 난이도 선택</h1>
-                <p>도전할 난이도를 선택하세요</p>
-            </div>
-            <div class="difficulty-selector">
-                <div class="difficulty-btn" data-difficulty="EASY">
-                    <div style="font-size: 1.5rem; margin-bottom: 5px;">🟢</div>
-                    <div>쉬움</div>
-                    <small>3개 충돌</small>
-                </div>
-                <div class="difficulty-btn" data-difficulty="NORMAL">
-                    <div style="font-size: 1.5rem; margin-bottom: 5px;">🟡</div>
-                    <div>보통</div>
-                    <small>5개 충돌</small>
-                </div>
-                <div class="difficulty-btn" data-difficulty="HARD">
-                    <div style="font-size: 1.5rem; margin-bottom: 5px;">🔴</div>
-                    <div>어려움</div>
-                    <small>8개 충돌</small>
-                </div>
-                <div class="difficulty-btn" data-difficulty="HELL">
-                    <div style="font-size: 1.5rem; margin-bottom: 5px;">💀</div>
-                    <div>지옥</div>
-                    <small>12개 충돌</small>
-                </div>
-            </div>
-            <div class="btn-group">
-                <button class="btn" id="backToCharacterBtn">뒤로</button>
-                <button class="btn" id="startGameBtn" disabled>게임 시작</button>
-            </div>
-        </div>
+       <div class="screen" id="difficultyScreen">
+           <div class="header">
+               <h1>난이도 선택</h1>
+               <p>도전할 난이도를 선택하세요</p>
+           </div>
+           <div class="difficulty-selector">
+               <div class="difficulty-btn" data-difficulty="EASY">
+                   <div>쉬움</div>
+                   <small>3개 충돌</small>
+               </div>
+               <div class="difficulty-btn" data-difficulty="NORMAL">
+                   <div>보통</div>
+                   <small>5개 충돌</small>
+               </div>
+               <div class="difficulty-btn" data-difficulty="HARD">
+                   <div>어려움</div>
+                   <small>8개 충돌</small>
+               </div>
+               <div class="difficulty-btn" data-difficulty="HELL">
+                   <div>지옥</div>
+                   <small>12개 충돌</small>
+               </div>
+           </div>
+           <div class="btn-group">
+               <button class="btn" id="backToCharacterBtn">뒤로</button>
+               <button class="btn" id="startGameBtn" disabled>게임 시작</button>
+           </div>
+       </div>
 
-        <div class="screen" id="gameScreen">
-            <div class="header">
-                <h1>⚔️ Git Merge Battle</h1>
-            </div>
-            <div class="game-area">
-                <div class="conflict-area">
-                    <div class="file-header" id="fileHeader">file.js</div>
-                    <textarea class="code-editor" id="codeEditor" placeholder="충돌을 해결하세요..."></textarea>
-                    <div class="hint">
-                        💡 힌트: &lt;&lt;&lt;&lt;&lt;&lt;&lt;, =======, &gt;&gt;&gt;&gt;&gt;&gt;&gt; 마커를 제거하고 올바른 코드만 남기세요!
-                    </div>
-                    <div class="result-message" id="resultMessage" style="display: none;"></div>
-                </div>
-                <div class="sidebar">
-                    <div class="selected-character" id="selectedCharacterDisplay"></div>
-                    <div class="current-status" id="currentStatus">충돌 1/3</div>
-                    <div class="timer" id="timer">시간: 0초</div>
-                    <div class="score" id="score">점수: 0</div>
-                    <div class="controls">
-                        <button class="btn" id="prevConflictBtn">이전 충돌</button>
-                        <button class="btn" id="nextConflictBtn">다음 충돌</button>
-                        <button class="btn" id="checkSolutionBtn" onclick="checkSolution()">해결 확인</button>
-                        <button class="btn" id="submitSolutionBtn" style="display: none;">게임 완료</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+       <div class="screen" id="gameScreen">
+           <div class="header">
+               <h1>Git Merge Battle</h1>
+           </div>
+           <div class="game-area">
+               <div class="conflict-area">
+                   <div class="file-header" id="fileHeader">file.js</div>
+                   <textarea class="code-editor" id="codeEditor" placeholder="충돌을 해결하세요..."></textarea>
+                   <div class="hint">
+                       마커를 제거하고 올바른 코드만 남기세요!
+                   </div>
+                   <div class="result-message" id="resultMessage" style="display: none;"></div>
+               </div>
+               <div class="sidebar">
+                   <div class="selected-character" id="selectedCharacterDisplay"></div>
+                   <div class="current-status" id="currentStatus">충돌 1/3</div>
+                   <div class="timer" id="timer">시간: 0초</div>
+                   <div class="score" id="score">점수: 0</div>
+                   <div class="controls">
+                       <button class="btn" id="prevConflictBtn">이전</button>
+                       <button class="btn" id="nextConflictBtn">다음</button>
+                       <button class="btn" id="checkSolutionBtn">해결 확인</button>
+                       <button class="btn" id="submitSolutionBtn" style="display: none;">게임 완료</button>
+                   </div>
+               </div>
+           </div>
+       </div>
+   </div>
 
-    <script>
-        let characters = [];
-        let selectedCharacter = null;
-        let selectedDifficulty = null;
-        let gameSession = null;
-        let currentConflictIndex = 0;
-        let resolvedConflicts = [];
-        let currentScore = 0;
+   <script>
+       let characters = [];
+       let selectedCharacter = null;
+       let selectedDifficulty = null;
+       let gameSession = null;
+       let currentConflictIndex = 0;
+       let resolvedConflicts = [];
+       let currentScore = 0;
+       let gameTimer = null;
 
-        async function loadCharacters() {
-            try {
-                const response = await fetch('/api/character/all');
-                characters = await response.json();
-                renderCharacters();
-            } catch (error) {
-                console.error('캐릭터 로딩 실패:', error);
-            }
-        }
+       document.addEventListener('DOMContentLoaded', function() {
+           initializeEventListeners();
+           loadCharacters();
+       });
 
-        function renderCharacters() {
-            const grid = document.getElementById('characterGrid');
-            grid.innerHTML = characters.map(char => `
-                <div class="character-card" data-id="${char.id}">
-                    <div class="character-emoji">${char.spriteEmoji}</div>
-                    <div class="character-name">${char.name}</div>
-                    <div class="character-ability">${char.specialAbility}</div>
-                    <div class="character-stats">
-                        <div class="stat">
-                            <div class="stat-value">+${char.speedBonus}%</div>
-                            <div class="stat-label">속도</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">+${char.accuracyBonus}%</div>
-                            <div class="stat-label">정확도</div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+       function initializeEventListeners() {
+           document.getElementById('confirmCharacterBtn').onclick = () => showScreen('difficultyScreen');
+           document.getElementById('backToCharacterBtn').onclick = () => showScreen('characterScreen');
+           document.getElementById('startGameBtn').onclick = startNewGame;
+           document.getElementById('prevConflictBtn').onclick = () => navigateConflict(-1);
+           document.getElementById('nextConflictBtn').onclick = () => navigateConflict(1);
+           document.getElementById('checkSolutionBtn').onclick = checkSolution;
+           document.getElementById('submitSolutionBtn').onclick = finishGame;
+       }
 
-            document.querySelectorAll('.character-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    document.querySelectorAll('.character-card').forEach(c => c.classList.remove('selected'));
-                    card.classList.add('selected');
-                    selectedCharacter = characters.find(c => c.id == card.dataset.id);
-                    document.getElementById('confirmCharacterBtn').disabled = false;
-                });
-            });
-        }
+       async function loadCharacters() {
+           try {
+               const response = await fetch('/api/character/all');
+               characters = await response.json();
+               renderCharacters();
+           } catch (error) {
+               console.error('캐릭터 로딩 실패:', error);
+           }
+       }
 
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-        }
+       function renderCharacters() {
+           const grid = document.getElementById('characterGrid');
+           grid.innerHTML = characters.map(char => `
+               <div class="character-card" data-id="${char.id}">
+                   <div class="character-emoji">${char.spriteEmoji}</div>
+                   <div class="character-name">${char.name}</div>
+                   <div class="character-ability">${char.specialAbility}</div>
+                   <div class="character-stats">
+                       <div class="stat">
+                           <div class="stat-value">+${char.speedBonus}%</div>
+                           <div class="stat-label">속도</div>
+                       </div>
+                       <div class="stat">
+                           <div class="stat-value">+${char.accuracyBonus}%</div>
+                           <div class="stat-label">정확도</div>
+                       </div>
+                   </div>
+               </div>
+           `).join('');
 
-        function displayConflict(index) {
-            console.log('displayConflict 호출:', index);
-            if (!gameSession || !gameSession.conflicts || index >= gameSession.conflicts.length) {
-                console.log('게임 세션 또는 충돌 데이터 없음');
-                return;
-            }
-            
-            const conflict = gameSession.conflicts[index];
-            console.log('현재 충돌:', conflict);
-            
-            document.getElementById('fileHeader').textContent = conflict.fileName;
-            document.getElementById('codeEditor').value = conflict.conflictMarkers;
-            
-            document.getElementById('currentStatus').textContent = 
-                `충돌 ${index + 1}/${gameSession.conflicts.length} ${resolvedConflicts[index] ? '✅' : '⏳'}`;
-            
-            document.getElementById('prevConflictBtn').disabled = index === 0;
-            document.getElementById('nextConflictBtn').disabled = index === gameSession.conflicts.length - 1;
-            
-            document.getElementById('resultMessage').style.display = 'none';
-        }
+           attachCharacterEvents();
+       }
 
-        function checkSolution() {
-            console.log('checkSolution 호출됨!');
-            
-            if (!gameSession || !gameSession.conflicts) {
-                console.log('게임 세션이 없음');
-                return;
-            }
-            
-            const userSolution = document.getElementById('codeEditor').value.trim();
-            const conflict = gameSession.conflicts[currentConflictIndex];
-            const expectedSolution = conflict.expectedResolution.trim();
-            
-            console.log('사용자 입력:', userSolution);
-            console.log('정답:', expectedSolution);
-            
-            const resultDiv = document.getElementById('resultMessage');
-            resultDiv.style.display = 'block';
-            
-            if (userSolution === expectedSolution) {
-                resultDiv.className = 'result-message success';
-                resultDiv.textContent = '🎉 정답! 충돌이 해결되었습니다!';
-                resolvedConflicts[currentConflictIndex] = true;
-                currentScore += 100;
-                document.getElementById('score').textContent = `점수: ${currentScore}`;
-                
-                if (resolvedConflicts.filter(Boolean).length === gameSession.conflicts.length) {
-                    document.getElementById('submitSolutionBtn').style.display = 'block';
-                }
-            } else {
-                resultDiv.className = 'result-message error';
-                resultDiv.textContent = '❌ 틀렸습니다. 다시 시도해보세요!';
-                resolvedConflicts[currentConflictIndex] = false;
-            }
-            
-            displayConflict(currentConflictIndex);
-        }
+       function attachCharacterEvents() {
+           document.querySelectorAll('.character-card').forEach(card => {
+               card.onclick = () => selectCharacter(card);
+           });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('confirmCharacterBtn').addEventListener('click', () => {
-                showScreen('difficultyScreen');
-            });
+           document.querySelectorAll('.difficulty-btn').forEach(btn => {
+               btn.onclick = () => selectDifficulty(btn);
+           });
+       }
 
-            document.getElementById('backToCharacterBtn').addEventListener('click', () => {
-                showScreen('characterScreen');
-            });
+       function selectCharacter(card) {
+           document.querySelectorAll('.character-card').forEach(c => c.classList.remove('selected'));
+           card.classList.add('selected');
+           
+           selectedCharacter = characters.find(c => c.id == card.dataset.id);
+           document.getElementById('confirmCharacterBtn').disabled = false;
+       }
 
-            document.querySelectorAll('.difficulty-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedDifficulty = btn.dataset.difficulty;
-                    document.getElementById('startGameBtn').disabled = false;
-                });
-            });
+       function selectDifficulty(btn) {
+           document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+           btn.classList.add('selected');
+           
+           selectedDifficulty = btn.dataset.difficulty;
+           document.getElementById('startGameBtn').disabled = false;
+       }
 
-            document.getElementById('startGameBtn').addEventListener('click', async () => {
-                try {
-                    const response = await fetch('/api/game/start', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: 1,
-                            difficulty: selectedDifficulty
-                        })
-                    });
-                    gameSession = await response.json();
-                    currentConflictIndex = 0;
-                    resolvedConflicts = new Array(gameSession.conflicts.length).fill(false);
-                    currentScore = 0;
-                    startGame();
-                } catch (error) {
-                    console.error('게임 시작 실패:', error);
-                }
-            });
+       async function startNewGame() {
+           try {
+               const response = await fetch('/api/game/start', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({
+                       userId: 1,
+                       difficulty: selectedDifficulty
+                   })
+               });
+               
+               gameSession = await response.json();
+               initializeGame();
+               
+           } catch (error) {
+               console.error('게임 시작 실패:', error);
+           }
+       }
 
-            document.getElementById('prevConflictBtn').addEventListener('click', () => {
-                if (currentConflictIndex > 0) {
-                    currentConflictIndex--;
-                    displayConflict(currentConflictIndex);
-                }
-            });
+       function initializeGame() {
+           currentConflictIndex = 0;
+           resolvedConflicts = new Array(gameSession.conflicts.length).fill(false);
+           currentScore = 0;
+           
+           showScreen('gameScreen');
+           displaySelectedCharacter();
+           displayConflict(0);
+           startTimer();
+       }
 
-            document.getElementById('nextConflictBtn').addEventListener('click', () => {
-                if (currentConflictIndex < gameSession.conflicts.length - 1) {
-                    currentConflictIndex++;
-                    displayConflict(currentConflictIndex);
-                }
-            });
+       function displaySelectedCharacter() {
+           document.getElementById('selectedCharacterDisplay').innerHTML = `
+               <div class="selected-character-emoji">${selectedCharacter.spriteEmoji}</div>
+               <div class="character-name">${selectedCharacter.name}</div>
+               <div class="character-ability">${selectedCharacter.specialAbility}</div>
+           `;
+       }
 
-            document.getElementById('submitSolutionBtn').addEventListener('click', () => {
-                alert(`🎉 게임 완료! 최종 점수: ${currentScore}점`);
-            });
+       function displayConflict(index) {
+           if (!gameSession?.conflicts?.[index]) return;
+           
+           const conflict = gameSession.conflicts[index];
+           
+           document.getElementById('fileHeader').textContent = conflict.fileName;
+           document.getElementById('codeEditor').value = conflict.conflictMarkers;
+           document.getElementById('currentStatus').textContent = 
+               `충돌 ${index + 1}/${gameSession.conflicts.length} ${resolvedConflicts[index] ? '✅' : '⏳'}`;
+           
+           updateNavigationButtons();
+           hideResultMessage();
+       }
 
-            loadCharacters();
-        });
+       function updateNavigationButtons() {
+           document.getElementById('prevConflictBtn').disabled = currentConflictIndex === 0;
+           document.getElementById('nextConflictBtn').disabled = 
+               currentConflictIndex === gameSession.conflicts.length - 1;
+       }
 
-        function startGame() {
-            showScreen('gameScreen');
-            
-            document.getElementById('selectedCharacterDisplay').innerHTML = `
-                <div class="selected-character-emoji">${selectedCharacter.spriteEmoji}</div>
-                <div class="character-name">${selectedCharacter.name}</div>
-                <div class="character-ability">${selectedCharacter.specialAbility}</div>
-            `;
-            
-            displayConflict(currentConflictIndex);
-            
-            let startTime = Date.now();
-            const timer = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                document.getElementById('timer').textContent = `시간: ${elapsed}초`;
-            }, 1000);
-        }
-    </script>
+       function navigateConflict(direction) {
+           const newIndex = currentConflictIndex + direction;
+           if (newIndex >= 0 && newIndex < gameSession.conflicts.length) {
+               currentConflictIndex = newIndex;
+               displayConflict(currentConflictIndex);
+           }
+       }
+
+       function checkSolution() {
+           const userInput = document.getElementById('codeEditor').value.trim();
+           const expectedSolution = gameSession.conflicts[currentConflictIndex].expectedResolution.trim();
+           
+           const resultDiv = document.getElementById('resultMessage');
+           resultDiv.style.display = 'block';
+           
+           if (userInput === expectedSolution) {
+               showSuccess();
+               resolvedConflicts[currentConflictIndex] = true;
+               updateScore(100);
+               checkGameCompletion();
+           } else {
+               showError();
+               resolvedConflicts[currentConflictIndex] = false;
+           }
+           
+           displayConflict(currentConflictIndex);
+       }
+
+       function showSuccess() {
+           const resultDiv = document.getElementById('resultMessage');
+           resultDiv.className = 'result-message success';
+           resultDiv.textContent = '정답! 충돌이 해결되었습니다!';
+       }
+
+       function showError() {
+           const resultDiv = document.getElementById('resultMessage');
+           resultDiv.className = 'result-message error';
+           resultDiv.textContent = '틀렸습니다. 다시 시도해보세요!';
+       }
+
+       function hideResultMessage() {
+           document.getElementById('resultMessage').style.display = 'none';
+       }
+
+       function updateScore(points) {
+           currentScore += points;
+           document.getElementById('score').textContent = `점수: ${currentScore}`;
+       }
+
+       function checkGameCompletion() {
+           if (resolvedConflicts.every(resolved => resolved)) {
+               document.getElementById('submitSolutionBtn').style.display = 'block';
+           }
+       }
+
+       function finishGame() {
+           clearInterval(gameTimer);
+           alert(`게임 완료! 최종 점수: ${currentScore}점`);
+       }
+
+       function startTimer() {
+           let startTime = Date.now();
+           gameTimer = setInterval(() => {
+               const elapsed = Math.floor((Date.now() - startTime) / 1000);
+               document.getElementById('timer').textContent = `시간: ${elapsed}초`;
+           }, 1000);
+       }
+
+       function showScreen(screenId) {
+           document.querySelectorAll('.screen').forEach(screen => {
+               screen.classList.remove('active');
+           });
+           document.getElementById(screenId).classList.add('active');
+       }
+   </script>
 </body>
 </html>
