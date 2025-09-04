@@ -7,14 +7,14 @@
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Pretendard', sans-serif;
         }
 
         body {
-            font-family: 'Pretendard', sans-serif;
             background: #2a2a2a;
             color: #ffffff;
             line-height: 1.6;
@@ -44,8 +44,14 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .title {
@@ -59,6 +65,64 @@
             color: #cccccc;
             margin-bottom: 2rem;
             font-size: 1rem;
+        }
+
+        .action-button {
+            width: 100%;
+            background: #4a4a4a;
+            border: none;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+
+        .action-button:hover {
+            background: #555555;
+        }
+
+        .action-button:disabled {
+            background: #333333;
+            color: #666666;
+            cursor: not-allowed;
+        }
+
+        .start-button {
+            background: #00aa00 !important;
+        }
+
+        .start-button:hover {
+            background: #00cc00 !important;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            background: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1rem;
+            margin: 10px 0;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #666666;
+        }
+
+        input::placeholder {
+            color: #999999;
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
         }
 
         .room-info-box {
@@ -77,7 +141,6 @@
 
         .room-code {
             font-size: 3rem;
-            font-family: 'SF Mono', 'Courier New', monospace;
             font-weight: 700;
             color: #ffffff;
             margin: 15px 0;
@@ -98,7 +161,6 @@
             border-radius: 6px;
             font-size: 0.9rem;
             cursor: pointer;
-            font-family: inherit;
         }
 
         .copy-button:hover {
@@ -161,66 +223,6 @@
 
         .player-status.waiting {
             color: #999999;
-        }
-
-        .action-button {
-            width: 100%;
-            background: #4a4a4a;
-            border: none;
-            color: #ffffff;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-            margin: 10px 0;
-            font-family: inherit;
-            font-weight: 500;
-        }
-
-        .action-button:hover {
-            background: #555555;
-        }
-
-        .action-button:disabled {
-            background: #333333;
-            color: #666666;
-            cursor: not-allowed;
-        }
-
-        .start-button {
-            background: #00aa00 !important;
-        }
-
-        .start-button:hover {
-            background: #00cc00 !important;
-        }
-
-        input {
-            width: 100%;
-            padding: 15px;
-            background: #3a3a3a;
-            border: 1px solid #4a4a4a;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 1rem;
-            margin: 10px 0;
-            font-family: inherit;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #666666;
-        }
-
-        input::placeholder {
-            color: #999999;
-        }
-
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 20px 0;
         }
 
         .game-container {
@@ -286,7 +288,6 @@
             border: 1px solid #333;
             border-radius: 5px;
             padding: 15px;
-            font-family: 'SF Mono', 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
             resize: none;
@@ -343,12 +344,17 @@
             border-radius: 6px;
             color: #ffffff;
             cursor: pointer;
-            font-family: inherit;
             font-weight: 500;
         }
 
         .game-button:hover {
             background: #555555;
+        }
+
+        .game-button:disabled {
+            background: #333333;
+            color: #666666;
+            cursor: not-allowed;
         }
 
         .game-button.primary {
@@ -407,6 +413,7 @@
             border-radius: 5px;
             text-align: center;
             font-weight: bold;
+            display: none;
         }
 
         .result-message.success {
@@ -512,7 +519,7 @@
                 <div class="hint">
                     Git 충돌 마커(&lt;&lt;&lt;&lt;&lt;&lt;&lt;, =======, &gt;&gt;&gt;&gt;&gt;&gt;&gt;)를 제거하고 올바른 코드만 남기세요!
                 </div>
-                <div class="result-message" id="gameResultMessage" style="display: none;"></div>
+                <div class="result-message" id="gameResultMessage"></div>
             </div>
             
             <div class="game-sidebar">
@@ -594,7 +601,10 @@
                 };
                 
                 Object.entries(eventMap).forEach(([id, handler]) => {
-                    document.getElementById(id).addEventListener('click', handler);
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.addEventListener('click', handler);
+                    }
                 });
             }
             
@@ -607,6 +617,10 @@
                 this.showScreen(screenId);
             }
             
+            generateRoomCode() {
+                return Math.random().toString(36).substr(2, 6).toUpperCase();
+            }
+            
             updateStatus(message, elementId = 'status') {
                 const element = document.getElementById(elementId);
                 if (element) {
@@ -615,17 +629,25 @@
             }
             
             createRoom() {
-                const roomName = document.getElementById('roomNameInput').value.trim() || '새로운 방';
+                const roomName = document.getElementById('roomNameInput').value.trim() || '내 방';
                 this.isHost = true;
                 this.myReadyStatus = false;
                 this.updateStatus('방 생성 중...');
                 
-                this.connectWebSocket(() => {
-                    this.stompClient.send('/app/room/create', {}, JSON.stringify({
-                        nickname: this.nickname,
-                        roomName: roomName
-                    }));
-                });
+                this.currentRoomCode = this.generateRoomCode();
+                document.getElementById('displayRoomCode').textContent = this.currentRoomCode;
+                document.getElementById('displayRoomName').textContent = roomName;
+                
+                const players = {};
+                players[this.nickname] = {
+                    nickname: this.nickname,
+                    ready: false,
+                    isHost: true
+                };
+                
+                this.updatePlayerList(players);
+                this.updateStatus('방 생성 완료');
+                this.showScreen('roomScreen');
             }
             
             joinRoom() {
@@ -638,124 +660,48 @@
                 
                 this.isHost = false;
                 this.myReadyStatus = false;
-                this.updateStatus('방 참가 중...');
+                this.currentRoomCode = roomCode;
                 
-                this.connectWebSocket(() => {
-                    this.stompClient.subscribe(`/topic/room/${roomCode}`, (message) => {
-                        this.handleRoomMessage(JSON.parse(message.body));
-                    });
-                    
-                    this.stompClient.send('/app/room/join', {}, JSON.stringify({
-                        nickname: this.nickname,
-                        roomCode: roomCode
-                    }));
-                });
-            }
-            
-            toggleReady() {
-                if (!this.stompClient?.connected) return;
+                document.getElementById('displayRoomCode').textContent = roomCode;
+                document.getElementById('displayRoomName').textContent = '참가한 방';
                 
-                this.stompClient.send('/app/room/ready', {}, JSON.stringify({
-                    nickname: this.nickname
-                }));
-            }
-            
-            startGame() {
-                if (!this.stompClient?.connected || !this.isHost) return;
+                const players = {};
+                players[this.nickname] = {
+                    nickname: this.nickname,
+                    ready: false,
+                    isHost: false
+                };
                 
-                this.stompClient.send('/app/room/start', {}, JSON.stringify({
-                    nickname: this.nickname
-                }));
-            }
-            
-            leaveRoom() {
-                this.showScreen('menuScreen');
-                if (this.stompClient?.connected) {
-                    this.stompClient.disconnect();
-                }
-                this.currentRoomCode = '';
-                this.myReadyStatus = false;
-                document.getElementById('readyBtn').textContent = '준비하기';
-            }
-            
-            connectWebSocket(onReady) {
-                if (this.stompClient?.connected) {
-                    onReady?.();
-                    return;
-                }
-                
-                const socket = new SockJS('/ws/match');
-                this.stompClient = Stomp.over(socket);
-                
-                this.stompClient.connect({}, () => {
-                    this.updateStatus('연결됨');
-                    this.setupSubscriptions();
-                    onReady?.();
-                }, (error) => {
-                    this.updateStatus('연결 실패');
-                });
-            }
-            
-            setupSubscriptions() {
-                this.stompClient.subscribe('/topic/room-created', (message) => {
-                    const data = JSON.parse(message.body);
-                    if (data.creator === this.nickname) {
-                        this.handleRoomCreated(data);
-                    }
-                });
-                
-                this.stompClient.subscribe('/user/queue/error', (message) => {
-                    const data = JSON.parse(message.body);
-                    this.updateStatus('오류: ' + data.message);
-                    alert(data.message);
-                });
-            }
-            
-            handleRoomCreated(data) {
-                this.currentRoomCode = data.roomCode;
-                document.getElementById('displayRoomCode').textContent = data.roomCode;
-                document.getElementById('displayRoomName').textContent = data.roomName;
-                this.updatePlayerList(data.players);
-                this.updateStatus('방 생성 완료');
-                this.showScreen('roomScreen');
-                
-                this.stompClient.subscribe(`/topic/room/${data.roomCode}`, (message) => {
-                    this.handleRoomMessage(JSON.parse(message.body));
-                });
-            }
-            
-            handleRoomMessage(data) {
-                switch (data.type) {
-                    case 'PLAYER_JOINED':
-                        this.handlePlayerJoined(data);
-                        break;
-                    case 'PLAYER_READY':
-                        this.handlePlayerReady(data);
-                        break;
-                    case 'GAME_START':
-                        this.handleGameStart();
-                        break;
-                }
-            }
-            
-            handlePlayerJoined(data) {
-                this.currentRoomCode = data.roomCode;
-                document.getElementById('displayRoomCode').textContent = data.roomCode;
-                document.getElementById('displayRoomName').textContent = data.roomName;
-                this.updatePlayerList(data.players);
+                this.updatePlayerList(players);
                 this.updateStatus('방 입장 완료', 'roomStatus');
                 this.showScreen('roomScreen');
             }
             
-            handlePlayerReady(data) {
-                if (data.player === this.nickname) {
-                    this.myReadyStatus = data.ready;
-                    document.getElementById('readyBtn').textContent = this.myReadyStatus ? '준비 취소' : '준비하기';
-                }
+            toggleReady() {
+                this.myReadyStatus = !this.myReadyStatus;
+                document.getElementById('readyBtn').textContent = this.myReadyStatus ? '준비 취소' : '준비하기';
                 
-                this.updatePlayerList(data.players);
-                this.updateStatus(data.player + '님이 준비 상태를 변경했습니다', 'roomStatus');
-                this.checkGameStartCondition(data.players);
+                const players = {};
+                players[this.nickname] = {
+                    nickname: this.nickname,
+                    ready: this.myReadyStatus,
+                    isHost: this.isHost
+                };
+                
+                this.updatePlayerList(players);
+                this.checkGameStartCondition(players);
+            }
+            
+            startGame() {
+                if (!this.isHost) return;
+                this.handleGameStart();
+            }
+            
+            leaveRoom() {
+                this.showScreen('menuScreen');
+                this.currentRoomCode = '';
+                this.myReadyStatus = false;
+                document.getElementById('readyBtn').textContent = '준비하기';
             }
             
             async handleGameStart() {
@@ -777,13 +723,14 @@
 
                     if (response.ok) {
                         this.gameSession = await response.json();
+                        console.log('백엔드 API 연동 성공:', this.gameSession);
                     } else {
                         throw new Error('게임 세션 생성 실패');
                     }
                 } catch (error) {
-                    console.error('백엔드 API 호출 실패, 하드코딩 데이터 사용:', error);
+                    console.error('백엔드 API 실패, 테스트 데이터 사용:', error);
                     this.gameSession = {
-                        sessionId: 'fallback_' + Date.now(),
+                        sessionId: 'test_session_' + Date.now(),
                         conflicts: [
                             {
                                 fileName: 'utils.js',
@@ -807,7 +754,7 @@ const API_URL = 'http://localhost:3000';
 =======
 const API_URL = 'https://api.example.com';
 >>>>>>> incoming`,
-                                expectedResolution: `const API_URL = 'https://api.production.com';`
+                                expectedResolution: `const API_URL = 'https://api.example.com';`
                             },
                             {
                                 fileName: 'config.js',
@@ -824,7 +771,7 @@ export const config = {
 >>>>>>> incoming`,
                                 expectedResolution: `export const config = {
     debug: false,
-    timeout: 8000
+    timeout: 10000
 };`
                             }
                         ]
@@ -853,9 +800,11 @@ export const config = {
             }
             
             updateNavigationButtons() {
-                document.getElementById('prevConflictBtn').disabled = this.currentConflictIndex === 0;
-                document.getElementById('nextConflictBtn').disabled = 
-                    this.currentConflictIndex === this.gameSession.conflicts.length - 1;
+                const prevBtn = document.getElementById('prevConflictBtn');
+                const nextBtn = document.getElementById('nextConflictBtn');
+                
+                if (prevBtn) prevBtn.disabled = this.currentConflictIndex === 0;
+                if (nextBtn) nextBtn.disabled = this.currentConflictIndex === this.gameSession.conflicts.length - 1;
             }
             
             navigateConflict(direction) {
@@ -870,7 +819,7 @@ export const config = {
                 const userInput = document.getElementById('gameCodeEditor').value.trim();
                 
                 try {
-                    if (this.gameSession.sessionId && this.gameSession.sessionId.startsWith('fallback_')) {
+                    if (this.gameSession.sessionId.startsWith('test_session_')) {
                         this.checkSolutionLocally(userInput);
                     } else {
                         await this.checkSolutionWithAPI(userInput);
@@ -883,8 +832,15 @@ export const config = {
             
             checkSolutionLocally(userInput) {
                 const expectedSolution = this.gameSession.conflicts[this.currentConflictIndex].expectedResolution.trim();
+                const normalizedInput = userInput.replace(/\s+/g, ' ').trim();
+                const normalizedExpected = expectedSolution.replace(/\s+/g, ' ').trim();
                 
-                if (userInput === expectedSolution) {
+                console.log('로컬 검증:');
+                console.log('사용자 입력:', normalizedInput);
+                console.log('정답:', normalizedExpected);
+                console.log('일치 여부:', normalizedInput === normalizedExpected);
+                
+                if (normalizedInput === normalizedExpected) {
                     this.handleCorrectAnswer();
                 } else {
                     this.showGameError();
@@ -909,6 +865,7 @@ export const config = {
                 }
 
                 const result = await response.json();
+                console.log('API 검증 결과:', result);
                 
                 if (result.correct) {
                     this.handleCorrectAnswer();
@@ -943,24 +900,34 @@ export const config = {
             
             showGameSuccess() {
                 const resultDiv = document.getElementById('gameResultMessage');
-                resultDiv.className = 'result-message success';
-                resultDiv.textContent = '정답! 충돌이 해결되었습니다!';
-                resultDiv.style.display = 'block';
+                if (resultDiv) {
+                    resultDiv.className = 'result-message success';
+                    resultDiv.textContent = '정답! 충돌이 해결되었습니다!';
+                    resultDiv.style.display = 'block';
+                }
             }
             
             showGameError() {
                 const resultDiv = document.getElementById('gameResultMessage');
-                resultDiv.className = 'result-message error';
-                resultDiv.textContent = '틀렸습니다. 다시 시도해보세요!';
-                resultDiv.style.display = 'block';
+                if (resultDiv) {
+                    resultDiv.className = 'result-message error';
+                    resultDiv.textContent = '틀렸습니다. 다시 시도해보세요!';
+                    resultDiv.style.display = 'block';
+                }
             }
             
             hideGameResultMessage() {
-                document.getElementById('gameResultMessage').style.display = 'none';
+                const resultDiv = document.getElementById('gameResultMessage');
+                if (resultDiv) {
+                    resultDiv.style.display = 'none';
+                }
             }
             
             updateGameScore() {
-                document.getElementById('gameScore').textContent = this.gameScore;
+                const scoreElement = document.getElementById('gameScore');
+                if (scoreElement) {
+                    scoreElement.textContent = this.gameScore;
+                }
             }
             
             updateGameProgress() {
@@ -968,12 +935,16 @@ export const config = {
                 const total = this.gameSession.conflicts.length;
                 const percentage = (resolved / total) * 100;
                 
-                document.getElementById('gameProgress').style.width = percentage + '%';
-                document.getElementById('progressText').textContent = `${resolved} / ${total}`;
+                const progressFill = document.getElementById('gameProgress');
+                const progressText = document.getElementById('progressText');
+                
+                if (progressFill) progressFill.style.width = percentage + '%';
+                if (progressText) progressText.textContent = `${resolved} / ${total}`;
             }
             
             updateConflictList() {
                 const conflictList = document.getElementById('gameConflictList');
+                if (!conflictList) return;
                 
                 conflictList.innerHTML = this.gameSession.conflicts.map((conflict, index) => `
                     <div class="conflict-item ${index === this.currentConflictIndex ? 'active' : ''} ${this.resolvedConflicts[index] ? 'completed' : ''}" 
@@ -988,7 +959,10 @@ export const config = {
                 this.gameStartTime = Date.now();
                 this.gameTimer = setInterval(() => {
                     const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-                    document.getElementById('gameTimer').textContent = elapsed + '초';
+                    const timerElement = document.getElementById('gameTimer');
+                    if (timerElement) {
+                        timerElement.textContent = elapsed + '초';
+                    }
                 }, 1000);
             }
             
@@ -1007,6 +981,8 @@ export const config = {
             
             updatePlayerList(players) {
                 const playerList = document.getElementById('playerList');
+                if (!playerList) return;
+                
                 const playerArray = Object.values(players || {});
                 
                 if (playerArray.length === 0) {
@@ -1034,6 +1010,8 @@ export const config = {
                 const hasMinPlayers = playerArray.length >= 1;
                 
                 const startBtn = document.getElementById('startGameBtn');
+                if (!startBtn) return;
+                
                 if (this.isHost && allReady && hasMinPlayers) {
                     startBtn.style.display = 'block';
                     this.updateStatus('게임을 시작할 수 있습니다!', 'roomStatus');
@@ -1049,7 +1027,10 @@ export const config = {
                 document.querySelectorAll('.screen').forEach(screen => {
                     screen.classList.remove('active');
                 });
-                document.getElementById(screenId).classList.add('active');
+                const targetScreen = document.getElementById(screenId);
+                if (targetScreen) {
+                    targetScreen.classList.add('active');
+                }
             }
         }
         
@@ -1058,6 +1039,9 @@ export const config = {
             if (game && game.currentRoomCode) {
                 navigator.clipboard.writeText(game.currentRoomCode).then(() => {
                     alert('방 코드가 복사되었습니다: ' + game.currentRoomCode);
+                }).catch(err => {
+                    console.error('복사 실패:', err);
+                    prompt('방 코드를 복사하세요:', game.currentRoomCode);
                 });
             }
         }

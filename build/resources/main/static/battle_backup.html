@@ -764,38 +764,22 @@
               this.startGameTimer();
           }
           
-          async initializeGameSession() {
-              try {
-                  const response = await fetch("/api/game/start", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                          userId: 1,
-                          difficulty: "EASY"
-                      })
-                  });
-                  
-                  if (response.ok) {
-                      this.gameSession = await response.json();
-                      this.currentConflictIndex = 0;
-                      this.resolvedConflicts = new Array(this.gameSession.conflicts.length).fill(false);
-                      this.gameScore = 0;
-                      
-                      this.displayConflict(0);
-                      this.updateGameProgress();
-                      this.updateConflictList();
-                  } else {
-                      alert("게임 시작 실패");
-                  }
-              } catch (error) {
-                  alert("서버 연결 오류: " + error.message);
-              }
-          }=======
+          initializeGameSession() {
+              this.gameSession = {
+                  conflicts: [
+                      {
+                          fileName: 'utils.js',
+                          conflictMarkers: `<<<<<<< HEAD
+function calculateTotal(items) {
+   return items.reduce((sum, item) => sum + item.cost, 0);
+}
+=======
 function calculateTotal(items) {
    return items.reduce((sum, item) => sum + item.amount, 0);
 }
 >>>>>>> incoming`,
-                          // expectedResolution은 백엔드에서 가져옴   return items.reduce((sum, item) => sum + item.price, 0);
+                          expectedResolution: `function calculateTotal(items) {
+   return items.reduce((sum, item) => sum + item.price, 0);
 }`
                       },
                       {
@@ -805,7 +789,8 @@ const API_URL = 'http://localhost:3000';
 =======
 const API_URL = 'https://api.example.com';
 >>>>>>> incoming`,
-                          // expectedResolution은 백엔드에서 가져옴                      },
+                          expectedResolution: `const API_URL = 'https://api.production.com';`
+                      },
                       {
                           fileName: 'config.js',
                           conflictMarkers: `<<<<<<< HEAD
@@ -819,7 +804,8 @@ export const config = {
    timeout: 10000
 };
 >>>>>>> incoming`,
-                          // expectedResolution은 백엔드에서 가져옴   debug: false,
+                          expectedResolution: `export const config = {
+   debug: false,
    timeout: 8000
 };`
                       }
@@ -861,50 +847,25 @@ export const config = {
               }
           }
           
-          async checkSolution() {
-              const userInput = document.getElementById("gameCodeEditor").value.trim();
+          checkSolution() {
+              const userInput = document.getElementById('gameCodeEditor').value.trim();
+              const expectedSolution = this.gameSession.conflicts[this.currentConflictIndex].expectedResolution.trim();
               
-              try {
-                  const response = await fetch("/api/game/resolve", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                          sessionId: this.gameSession.sessionId,
-                          fileName: this.gameSession.conflicts[this.currentConflictIndex].fileName,
-                          resolution: userInput
-                      })
-                  });
+              const resultDiv = document.getElementById('gameResultMessage');
+              resultDiv.style.display = 'block';
+              
+              if (userInput === expectedSolution) {
+                  this.showGameSuccess();
+                  this.resolvedConflicts[this.currentConflictIndex] = true;
+                  this.gameScore += 100;
+                  this.updateGameScore();
+                  this.updateGameProgress();
+                  this.updateConflictList();
                   
-                  if (response.ok) {
-                      const result = await response.json();
-                      console.log("API Response:", result);
-                      
-                      const resultDiv = document.getElementById("gameResultMessage");
-                      resultDiv.style.display = "block";
-                      
-                      if (result.correct) {
-                          this.showGameSuccess();
-                          this.resolvedConflicts[this.currentConflictIndex] = true;
-                          this.gameScore += 100;
-                          this.updateGameScore();
-                          this.updateGameProgress();
-                          this.updateConflictList();
-                          
-                          if (result.gameCompleted) {
-                              setTimeout(() => this.completeGame(), 1500);
-                          }
-                      } else {
-                          this.showGameError();
-                      }
+                  if (this.resolvedConflicts.every(resolved => resolved)) {
+                      setTimeout(() => this.completeGame(), 1500);
                   } else {
-                      console.error("Submit failed:", await response.text());
-                      this.showGameError();
-                  }
-              } catch (error) {
-                  console.error("Submit error:", error);
-                  this.showGameError();
-              }
-          }                      setTimeout(() => {
+                      setTimeout(() => {
                           if (this.currentConflictIndex < this.gameSession.conflicts.length - 1) {
                               this.navigateConflict(1);
                           }
