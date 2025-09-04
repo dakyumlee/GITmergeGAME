@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Git Merge Game</title>
+    <style>
+        body { font-family: system-ui; background: #000; color: #fff; padding: 20px; }
+        .btn { background: #333; color: #fff; border: 1px solid #555; padding: 10px 20px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: #444; }
+        .code-editor { width: 100%; height: 300px; background: #111; color: #fff; padding: 10px; font-family: monospace; }
+        .difficulty-btn { padding: 15px; margin: 5px; background: #222; border: 1px solid #555; cursor: pointer; }
+        .difficulty-btn.selected { background: #006600; }
+        .game-area { display: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Git Merge Game</h1>
+    
+    <div id="menu">
+        <h3>난이도 선택:</h3>
+        <div class="difficulty-btn selected" data-difficulty="EASY">쉬움 (2개)</div>
+        <div class="difficulty-btn" data-difficulty="NORMAL">보통 (5개)</div>
+        <div class="difficulty-btn" data-difficulty="HARD">어려움 (8개)</div>
+        
+        <br><button class="btn" onclick="startGame()">게임 시작</button>
+    </div>
+    
+    <div id="gameArea" class="game-area">
+        <div id="fileInfo">파일: utils.js</div>
+        <textarea id="codeEditor" class="code-editor"></textarea>
+        <button class="btn" onclick="checkSolution()">해결 확인</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let gameData = null;
+        let currentIndex = 0;
+        let selectedDifficulty = 'EASY';
+
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedDifficulty = btn.dataset.difficulty;
+            };
+        });
+
+        async function startGame() {
+            try {
+                const response = await fetch('/api/game/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: 1, difficulty: selectedDifficulty })
+                });
+                
+                gameData = await response.json();
+                document.getElementById('menu').style.display = 'none';
+                document.getElementById('gameArea').style.display = 'block';
+                showConflict();
+            } catch (error) {
+                alert('게임 시작 실패');
+                console.error(error);
+            }
+        }
+
+        function showConflict() {
+            if (!gameData) return;
+            const conflict = gameData.conflicts[currentIndex];
+            document.getElementById('codeEditor').value = conflict.conflictMarkers;
+            document.getElementById('fileInfo').textContent = `파일: ${conflict.fileName} (${currentIndex + 1}/${gameData.conflicts.length})`;
+        }
+
+        async function checkSolution() {
+            const solution = document.getElementById('codeEditor').value;
+            
+            try {
+                const response = await fetch('/api/game/resolve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: gameData.sessionId,
+                        fileName: gameData.conflicts[currentIndex].fileName,
+                        resolution: solution
+                    })
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = result.correct ? 
+                    '<div style="color: green;">정답입니다!</div>' : 
+                    '<div style="color: red;">틀렸습니다. 다시 시도하세요.</div>';
+                    
+                if (result.correct) {
+                    setTimeout(() => {
+                        currentIndex++;
+                        if (currentIndex >= gameData.conflicts.length) {
+                            alert('게임 완료!');
+                            location.reload();
+                        } else {
+                            showConflict();
+                            document.getElementById('result').innerHTML = '';
+                        }
+                    }, 1500);
+                }
+            } catch (error) {
+                alert('확인 실패');
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>

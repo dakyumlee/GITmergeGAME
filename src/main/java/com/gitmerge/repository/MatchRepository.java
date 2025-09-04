@@ -17,4 +17,7 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     
     @Query("SELECT m FROM Match m WHERE m.status = 'WAITING' ORDER BY m.createdAt ASC")
     List<Match> findWaitingMatches();
+    
+    @Query(value = "SELECT m.* FROM matches m LEFT JOIN results r ON m.id = r.match_id WHERE m.game_id = :gameId AND m.status = :#{#status.name()} GROUP BY m.id HAVING COUNT(r.id) < :maxPlayers ORDER BY m.created_at ASC", nativeQuery = true)
+    List<Match> findAvailableRoomsWithSpace(Long gameId, MatchStatus status, int maxPlayers);
 }

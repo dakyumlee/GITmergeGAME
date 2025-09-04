@@ -1,53 +1,111 @@
 package com.gitmerge.controller;
 
-import org.springframework.web.bind.annotation.*;
+import com.gitmerge.enums.Difficulty;
+import com.gitmerge.service.GameLogicService;
+import com.gitmerge.service.GameLogicService.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/game")
 @CrossOrigin(origins = "*")
 public class GameController {
     
+    @Autowired
+    private GameLogicService gameLogicService;
+    
     @PostMapping("/start")
-    public ResponseEntity<?> startGame(@RequestBody Map<String, Object> request) {
-        
-        Map<String, Object> conflict1 = Map.of(
-            "fileName", "utils.js",
-            "conflictMarkers", "<<<<<<< HEAD\nfunction add(a, b) { return a + b; }\n=======\nfunction add(x, y) { return x + y; }\n>>>>>>> branch",
-            "expectedResolution", "function add(a, b) { return a + b; }"
-        );
-        
-        Map<String, Object> conflict2 = Map.of(
-            "fileName", "helper.js", 
-            "conflictMarkers", "<<<<<<< HEAD\nconst MAX = 100;\n=======\nconst MAX = 50;\n>>>>>>> branch",
-            "expectedResolution", "const MAX = 100;"
-        );
-        
-        List<Map<String, Object>> conflicts = List.of(conflict1, conflict2);
-        
-        return ResponseEntity.ok(Map.of(
-            "sessionId", "session_" + System.currentTimeMillis(),
-            "difficulty", request.get("difficulty"),
-            "conflicts", conflicts,
-            "totalConflicts", conflicts.size()
-        ));
+    public ResponseEntity<?> startGame(@RequestBody StartGameRequest request) {
+        try {
+            GameSession session = gameLogicService.startGame(request.getUserId(), request.getDifficulty());
+            
+            return ResponseEntity.ok(Map.of(
+                "sessionId", session.getSessionId(),
+                "difficulty", session.getDifficulty().toString(),
+                "timeLimit", session.getTimeLimit(),
+                "totalConflicts", session.getConflictData().getTotalConflicts(),
+                "conflicts", session.getConflictData().getConflicts()
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
     
     @PostMapping("/resolve")
-    public ResponseEntity<?> resolveConflict(@RequestBody Map<String, String> request) {
-        String userSolution = request.get("resolution").trim();
-        String sessionId = request.get("sessionId");
+    public ResponseEntity<?> submitResolution(@RequestBody ResolveConflictRequest request) {
+        try {
+            ConflictResolutionResult result = gameLogicService.submitResolution(
+                request.getSessionId(), 
+                request.getFileName(), 
+                request.getResolution()
+            );
+            
+            if (!result.isSuccess()) {
+                return ResponseEntity.badRequest().body(Map.of("error", result.getErrorMessage()));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "fileName", request.getFileName(),
+                "correct", result.isCorrect(),
+                "accuracy", result.getAccuracy(),
+                "cleanliness", result.getCleanliness(),
+                "gameCompleted", result.isGameCompleted()
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/finish/{sessionId}")
+    public ResponseEntity<?> finishGame(@PathVariable String sessionId) {
+        try {
+            GameResult result = gameLogicService.finishGame(sessionId);
+            
+            if (result == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Session not found"));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "sessionId", result.getSessionId(),
+                "totalScore", result.getTotalScore(),
+                "correctCount", result.getCorrectCount(),
+                "totalConflicts", result.getTotalConflicts(),
+                "accuracy", result.getAccuracy(),
+                "cleanliness", result.getCleanliness(),
+                "elapsedTime", result.getElapsedTime(),
+                "status", result.getStatus().toString(),
+                "difficulty", result.getDifficulty().toString()
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    public static class StartGameRequest {
+        private Long userId;
+        private Difficulty difficulty;
         
-        // 간단한 정답 체크 (실제로는 더 정교해야 함)
-        boolean isCorrect = userSolution.contains("function add(a, b)") || userSolution.contains("const MAX = 100");
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public Difficulty getDifficulty() { return difficulty; }
+        public void setDifficulty(Difficulty difficulty) { this.difficulty = difficulty; }
+    }
+    
+    public static class ResolveConflictRequest {
+        private String sessionId;
+        private String fileName;
+        private String resolution;
         
-        return ResponseEntity.ok(Map.of(
-            "correct", isCorrect,
-            "gameCompleted", false,
-            "message", isCorrect ? "정답입니다!" : "다시 시도하세요"
-        ));
+        public String getSessionId() { return sessionId; }
+        public void setSessionId(String sessionId) { this.sessionId = sessionId; }
+        public String getFileName() { return fileName; }
+        public void setFileName(String fileName) { this.fileName = fileName; }
+        public String getResolution() { return resolution; }
+        public void setResolution(String resolution) { this.resolution = resolution; }
     }
 }
