@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <title>Git Merge Battle</title>
+   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+   <style>
+       body { 
+           font-family: Arial; 
+           background: #111; 
+           color: #fff; 
+           margin: 0; 
+           padding: 20px; 
+       }
+       .screen { 
+           display: none; 
+           max-width: 600px; 
+           margin: 0 auto; 
+           padding: 40px; 
+           background: #222; 
+           border-radius: 8px; 
+       }
+       .screen.active { 
+           display: block; 
+       }
+       .title { 
+           text-align: center; 
+           font-size: 2rem; 
+           margin-bottom: 30px; 
+       }
+       input, button { 
+           padding: 15px; 
+           font-size: 1rem; 
+           border-radius: 6px; 
+           border: 1px solid #444; 
+           background: #333; 
+           color: #fff; 
+           margin: 10px 0; 
+           width: 100%; 
+           box-sizing: border-box; 
+       }
+       button:hover { 
+           background: #555; 
+           cursor: pointer; 
+       }
+       .btn-group { 
+           display: grid; 
+           grid-template-columns: 1fr 1fr; 
+           gap: 15px; 
+       }
+       .room-info { 
+           background: #333; 
+           padding: 30px; 
+           margin: 20px 0; 
+           text-align: center; 
+           border-radius: 8px; 
+       }
+       .room-code { 
+           font-size: 2rem; 
+           font-family: monospace; 
+           margin: 10px 0; 
+       }
+       .player-list { 
+           background: #444; 
+           padding: 20px; 
+           border-radius: 6px; 
+           margin: 20px 0; 
+       }
+       .player-item { 
+           display: flex; 
+           justify-content: space-between; 
+           padding: 10px; 
+           margin: 5px 0; 
+           background: #555; 
+           border-radius: 4px; 
+       }
+       #status { 
+           color: #0f0; 
+           margin: 20px 0; 
+           text-align: center; 
+           font-size: 14px; 
+           min-height: 20px; 
+       }
+   </style>
+</head>
+<body>
+   <div class="screen active" id="menuScreen">
+       <h1 class="title">Git Merge Battle</h1>
+       <p>닉네임: <strong id="displayNickname">로딩중...</strong></p>
+       <div class="btn-group">
+           <button id="createRoomBtn">방 만들기</button>
+           <button id="joinRoomBtn">방 참가</button>
+       </div>
+       <button onclick="location.href='index.html'">메인으로</button>
+       <div id="status"></div>
+   </div>
+
+   <div class="screen" id="createScreen">
+       <h1 class="title">방 만들기</h1>
+       <input type="text" id="roomNameInput" placeholder="방 이름 입력" value="내 방">
+       <button id="confirmCreateBtn">방 생성</button>
+       <button id="backFromCreateBtn">뒤로가기</button>
+   </div>
+
+   <div class="screen" id="joinScreen">
+       <h1 class="title">방 참가</h1>
+       <input type="text" id="roomCodeInput" placeholder="방 코드 입력 (6자리)" maxlength="6">
+       <button id="confirmJoinBtn">입장하기</button>
+       <button id="backFromJoinBtn">뒤로가기</button>
+   </div>
+
+   <div class="screen" id="roomScreen">
+       <h1 class="title">대기실</h1>
+       <div class="room-info">
+           <div>방 코드</div>
+           <div class="room-code" id="displayRoomCode">------</div>
+           <div id="displayRoomName">대기중...</div>
+           <button onclick="copyRoomCode()" style="width: auto; padding: 8px 16px;">코드 복사</button>
+       </div>
+       <div class="player-list" id="playerList"></div>
+       <button id="readyBtn">준비하기</button>
+       <button id="leaveBtn">방 나가기</button>
+   </div>
+
+   <script>
+       let stompClient = null;
+       let nickname = localStorage.getItem('gitmerge_nickname');
+       let currentRoomCode = '';
+       
+       if (!nickname) {
+           alert('닉네임이 설정되지 않았습니다');
+           window.location.href = 'index.html';
+       } else {
+           document.getElementById('displayNickname').textContent = nickname;
+       }
+       
+       function updateStatus(msg) {
+           document.getElementById('status').textContent = msg;
+       }
+       
+       document.getElementById('createRoomBtn').addEventListener('click', () => showScreen('createScreen'));
+       document.getElementById('joinRoomBtn').addEventListener('click', () => showScreen('joinScreen'));
+       
+       document.getElementById('confirmCreateBtn').addEventListener('click', function() {
+           const roomName = document.getElementById('roomNameInput').value.trim() || '새로운 방';
+           createRoom(roomName);
+       });
+       
+       document.getElementById('confirmJoinBtn').addEventListener('click', function() {
+           const roomCode = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+           if (roomCode.length === 6) {
+               joinRoom(roomCode);
+           } else {
+               alert('6자리 방 코드를 입력하세요');
+           }
+       });
+       
+       document.getElementById('backFromCreateBtn').addEventListener('click', () => showScreen('menuScreen'));
+       document.getElementById('backFromJoinBtn').addEventListener('click', () => showScreen('menuScreen'));
+       
+       document.getElementById('readyBtn').addEventListener('click', function() {
+           if (stompClient && stompClient.connected) {
+               stompClient.send('/app/room/ready', {}, JSON.stringify({nickname: nickname}));
+           }
+       });
+       
+       document.getElementById('leaveBtn').addEventListener('click', function() {
+           showScreen('menuScreen');
+           if (stompClient && stompClient.connected) {
+               stompClient.disconnect();
+           }
+       });
+       
+       function createRoom(roomName) {
+           updateStatus('방 생성 중...');
+           connectWebSocket(() => {
+               stompClient.send('/app/room/create', {}, JSON.stringify({
+                   nickname: nickname,
+                   roomName: roomName
+               }));
+           });
+       }
+       
+       function joinRoom(roomCode) {
+           updateStatus('방 참가 중...');
+           connectWebSocket(() => {
+               stompClient.subscribe('/topic/room/' + roomCode, handleRoomMessage);
+               stompClient.send('/app/room/join', {}, JSON.stringify({
+                   nickname: nickname,
+                   roomCode: roomCode
+               }));
+           });
+       }
+       
+       function connectWebSocket(onReady) {
+           if (stompClient && stompClient.connected) {
+               onReady();
+               return;
+           }
+           
+           const socket = new SockJS('/ws/match');
+           stompClient = Stomp.over(socket);
+           
+           stompClient.connect({}, function() {
+               stompClient.subscribe('/topic/room-created', function(message) {
+                   const data = JSON.parse(message.body);
+                   if (data.creator === nickname) {
+                       handleRoomCreated(data);
+                   }
+               });
+               
+               stompClient.subscribe('/user/queue/error', function(message) {
+                   const data = JSON.parse(message.body);
+                   updateStatus('오류: ' + data.message);
+                   alert(data.message);
+               });
+               
+               if (onReady) onReady();
+           });
+       }
+       
+       function handleRoomCreated(data) {
+           currentRoomCode = data.roomCode;
+           document.getElementById('displayRoomCode').textContent = data.roomCode;
+           document.getElementById('displayRoomName').textContent = data.roomName;
+           updateStatus('방 생성 완료');
+           showScreen('roomScreen');
+           
+           stompClient.subscribe('/topic/room/' + data.roomCode, handleRoomMessage);
+       }
+       
+       function handleRoomMessage(message) {
+           const data = JSON.parse(message.body);
+           
+           if (data.type === 'PLAYER_JOINED') {
+               currentRoomCode = data.roomCode;
+               document.getElementById('displayRoomCode').textContent = data.roomCode;
+               document.getElementById('displayRoomName').textContent = data.roomName;
+               updatePlayerList(data.players);
+               updateStatus('방 입장 완료');
+               showScreen('roomScreen');
+           } else if (data.type === 'PLAYER_READY') {
+               updatePlayerList(data.players);
+           }
+       }
+       
+       function updatePlayerList(players) {
+           const playerList = document.getElementById('playerList');
+           playerList.innerHTML = '';
+           
+           Object.values(players).forEach(player => {
+               const item = document.createElement('div');
+               item.className = 'player-item';
+               item.innerHTML = `
+                   <span>${player.nickname} ${player.isHost ? '(방장)' : ''}</span>
+                   <span style="color: ${player.ready ? '#0f0' : '#888'}">${player.ready ? '준비완료' : '대기중'}</span>
+               `;
+               playerList.appendChild(item);
+           });
+       }
+       
+       function copyRoomCode() {
+           if (currentRoomCode) {
+               navigator.clipboard.writeText(currentRoomCode);
+               alert('방 코드 복사됨: ' + currentRoomCode);
+           }
+       }
+       
+       function showScreen(screenId) {
+           document.querySelectorAll('.screen').forEach(screen => {
+               screen.classList.remove('active');
+           });
+           document.getElementById(screenId).classList.add('active');
+       }
+   </script>
+</body>
+</html>

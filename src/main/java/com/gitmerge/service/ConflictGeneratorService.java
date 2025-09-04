@@ -56,6 +56,8 @@ public class ConflictGeneratorService {
     
     private ConflictBlock createSimpleConflict(int index) {
         String baseCode = CODE_TEMPLATES[index % CODE_TEMPLATES.length];
+        String correctAnswer = baseCode.replace("price", "amount");
+        
         return ConflictBlock.builder()
             .fileName("file" + index + ".js")
             .lineStart(1)
@@ -63,7 +65,7 @@ public class ConflictGeneratorService {
             .currentBranch(baseCode.replace("price", "cost"))
             .incomingBranch(baseCode.replace("price", "amount"))
             .conflictMarkers(generateConflictMarkers(baseCode))
-            .expectedResolution(baseCode)
+            .expectedResolution(correctAnswer)
             .build();
     }
     
