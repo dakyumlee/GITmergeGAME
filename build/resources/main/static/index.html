@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Git Merge Game</title>
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -53,6 +55,28 @@
         .header p {
             font-size: clamp(0.9rem, 3vw, 1rem);
             color: #718096;
+        }
+        
+        .nickname-input {
+            max-width: 400px;
+            margin: 0 auto 30px auto;
+            text-align: center;
+        }
+        
+        .nickname-input input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: clamp(1rem, 3vw, 1.1rem);
+            text-align: center;
+            margin-bottom: 15px;
+            font-family: 'Pretendard', sans-serif;
+        }
+        
+        .nickname-input input:focus {
+            outline: none;
+            border-color: #667eea;
         }
         
         .character-grid {
@@ -145,6 +169,14 @@
             background: #cbd5e0;
             cursor: not-allowed;
             transform: none;
+        }
+        
+        .btn.battle {
+            background: #f59e0b;
+        }
+        
+        .btn.battle:hover {
+            background: #d97706;
         }
         
         .btn-group {
@@ -273,6 +305,20 @@
             font-size: clamp(0.8rem, 2.5vw, 0.9rem);
         }
         
+        .player-info {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #eef2ff;
+            border-radius: 8px;
+        }
+        
+        .player-nickname {
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
+            font-weight: 600;
+            color: #667eea;
+        }
+        
         .current-status,
         .timer,
         .score {
@@ -312,6 +358,63 @@
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        
+        .score-result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .final-score {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .battle-options {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .join-room {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .join-room input {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 200px;
+        }
+        
+        .battle-ui {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            height: 80vh;
+        }
+        
+        .opponent-status,
+        .my-status {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .battle-controls {
+            margin-top: 15px;
+            text-align: center;
         }
         
         @media (min-width: 768px) {
@@ -423,7 +526,20 @@
 </head>
 <body>
     <div class="container">
-        <div class="screen active" id="characterScreen">
+        <div class="screen active" id="nicknameScreen">
+            <div class="header">
+                <h1>Git Merge Game</h1>
+                <p>닉네임을 입력해주세요</p>
+            </div>
+            <div class="nickname-input">
+                <input type="text" id="nicknameInput" placeholder="닉네임 입력 (2~10글자)" maxlength="10">
+                <div class="btn-group">
+                    <button class="btn" id="enterGameBtn" disabled>게임 입장</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="characterScreen">
             <div class="header">
                 <h1>캐릭터 선택</h1>
                 <p>당신의 개발자 페르소나를 선택하세요</p>
@@ -436,8 +552,8 @@
 
         <div class="screen" id="difficultyScreen">
             <div class="header">
-                <h1>난이도 선택</h1>
-                <p>도전할 난이도를 선택하세요</p>
+                <h1>게임 모드 선택</h1>
+                <p>혼자 하기 또는 친구와 대결</p>
             </div>
             <div class="difficulty-selector">
                 <div class="difficulty-btn" data-difficulty="EASY">
@@ -459,7 +575,30 @@
             </div>
             <div class="btn-group">
                 <button class="btn" id="backToCharacterBtn">뒤로</button>
-                <button class="btn" id="startGameBtn" disabled>게임 시작</button>
+                <button class="btn" id="startGameBtn" disabled>혼자 하기</button>
+                <button class="btn battle" id="battleModeBtn" disabled>친구와 대결</button>
+            </div>
+        </div>
+
+        <div class="screen" id="battleScreen">
+            <div class="header">
+                <h1>친구와 대결</h1>
+                <p>실시간 배틀 모드</p>
+            </div>
+            <div class="battle-options">
+                <button class="btn" id="createRoomBtn">방 만들기</button>
+                <div class="join-room">
+                    <input type="text" id="roomIdInput" placeholder="방 코드 입력">
+                    <button class="btn" id="joinRoomBtn">방 참가</button>
+                </div>
+            </div>
+            <div id="battleStatus" style="display: none;">
+                <div id="roomInfo"></div>
+                <div id="playerList"></div>
+                <button class="btn" id="startBattleBtn" style="display: none;">게임 시작</button>
+            </div>
+            <div class="btn-group">
+                <button class="btn" id="backToDifficultyBtn">뒤로</button>
             </div>
         </div>
 
@@ -477,6 +616,9 @@
                     <div class="result-message" id="resultMessage" style="display: none;"></div>
                 </div>
                 <div class="sidebar">
+                    <div class="player-info">
+                        <div class="player-nickname" id="playerNickname"></div>
+                    </div>
                     <div class="selected-character" id="selectedCharacterDisplay"></div>
                     <div class="current-status" id="currentStatus">충돌 1/3</div>
                     <div class="timer" id="timer">시간: 0초</div>
@@ -490,9 +632,51 @@
                 </div>
             </div>
         </div>
+
+        <div class="screen" id="battleGameScreen">
+            <div class="header">
+                <h1>실시간 배틀</h1>
+            </div>
+            <div class="battle-ui">
+                <div class="opponent-status">
+                    <div id="opponentInfo">상대방: 대기중...</div>
+                    <div id="opponentProgress">진행률: 0/3</div>
+                </div>
+                <div class="game-area">
+                    <div class="conflict-area">
+                        <div class="file-header" id="battleFileHeader">file.js</div>
+                        <textarea class="code-editor" id="battleCodeEditor" placeholder="충돌을 해결하세요..."></textarea>
+                        <div class="battle-controls">
+                            <button class="btn" id="submitBattleSolutionBtn">제출</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="my-status">
+                    <div id="myInfo">나: 대기중...</div>
+                    <div id="myProgress">진행률: 0/3</div>
+                    <div id="myScore">점수: 0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="resultScreen">
+            <div class="header">
+                <h1>게임 결과</h1>
+            </div>
+            <div class="score-result">
+                <div class="final-score" id="finalScore">0점</div>
+                <div id="resultSummary"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn" id="playAgainBtn">다시 하기</button>
+                <button class="btn" id="changeNicknameBtn">닉네임 변경</button>
+            </div>
+        </div>
     </div>
 
     <script>
+        let currentNickname = '';
+        let currentUser = null;
         let characters = [];
         let selectedCharacter = null;
         let selectedDifficulty = null;
@@ -501,20 +685,102 @@
         let attemptedConflicts = [];
         let currentScore = 0;
         let gameTimer = null;
+        let startTime = null;
+        
+        let stompClient = null;
+        let battleRoom = null;
+        let battleConflicts = [];
+        let currentBattleConflict = 0;
+        let myBattleScore = 0;
 
         document.addEventListener('DOMContentLoaded', function() {
             initializeEventListeners();
             loadCharacters();
+            connectWebSocket();
         });
 
         function initializeEventListeners() {
+            document.getElementById('nicknameInput').oninput = validateNickname;
+            document.getElementById('nicknameInput').onkeypress = function(e) {
+                if (e.key === 'Enter' && !document.getElementById('enterGameBtn').disabled) {
+                    enterGame();
+                }
+            };
+            document.getElementById('enterGameBtn').onclick = enterGame;
             document.getElementById('confirmCharacterBtn').onclick = () => showScreen('difficultyScreen');
             document.getElementById('backToCharacterBtn').onclick = () => showScreen('characterScreen');
             document.getElementById('startGameBtn').onclick = startNewGame;
+            document.getElementById('battleModeBtn').onclick = () => showScreen('battleScreen');
+            document.getElementById('backToDifficultyBtn').onclick = () => showScreen('difficultyScreen');
             document.getElementById('prevConflictBtn').onclick = () => navigateConflict(-1);
             document.getElementById('nextConflictBtn').onclick = () => navigateConflict(1);
             document.getElementById('checkSolutionBtn').onclick = checkSolution;
             document.getElementById('submitSolutionBtn').onclick = finishGame;
+            document.getElementById('playAgainBtn').onclick = () => showScreen('difficultyScreen');
+            document.getElementById('changeNicknameBtn').onclick = () => showScreen('nicknameScreen');
+            
+            document.getElementById('createRoomBtn').onclick = createBattleRoom;
+            document.getElementById('joinRoomBtn').onclick = () => joinBattleRoom();
+            document.getElementById('startBattleBtn').onclick = () => {
+                if (stompClient && stompClient.connected) {
+                    stompClient.send('/app/battle/start', {}, JSON.stringify({ roomId: battleRoom }));
+                }
+            };
+            document.getElementById('submitBattleSolutionBtn').onclick = submitBattleSolution;
+        }
+
+        function connectWebSocket() {
+            try {
+                const socket = new SockJS('/ws/match');
+                stompClient = Stomp.over(socket);
+                
+                stompClient.connect({}, function(frame) {
+                    console.log('WebSocket 연결됨: ' + frame);
+                }, function(error) {
+                    console.log('WebSocket 연결 실패:', error);
+                });
+            } catch (error) {
+                console.log('WebSocket 초기화 실패:', error);
+            }
+        }
+
+        function validateNickname() {
+            const input = document.getElementById('nicknameInput');
+            const btn = document.getElementById('enterGameBtn');
+            const nickname = input.value.trim();
+            
+            if (nickname.length >= 2 && nickname.length <= 10) {
+                btn.disabled = false;
+                currentNickname = nickname;
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        async function enterGame() {
+            try {
+                const response = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `nickname=${encodeURIComponent(currentNickname)}`
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    showScreen('characterScreen');
+                } else {
+                    const existing = await fetch(`/api/users/${encodeURIComponent(currentNickname)}`);
+                    if (existing.ok) {
+                        currentUser = await existing.json();
+                        showScreen('characterScreen');
+                    } else {
+                        alert('닉네임 등록에 실패했습니다.');
+                    }
+                }
+            } catch (error) {
+                console.error('사용자 등록 실패:', error);
+                alert('서버 연결에 실패했습니다.');
+            }
         }
 
         async function loadCharacters() {
@@ -574,6 +840,7 @@
             
             selectedDifficulty = btn.dataset.difficulty;
             document.getElementById('startGameBtn').disabled = false;
+            document.getElementById('battleModeBtn').disabled = false;
         }
 
         async function startNewGame() {
@@ -582,7 +849,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        userId: 1,
+                        userId: currentUser.id,
                         difficulty: selectedDifficulty
                     })
                 });
@@ -599,11 +866,17 @@
             currentConflictIndex = 0;
             attemptedConflicts = new Array(gameSession.conflicts.length).fill(false);
             currentScore = 0;
+            startTime = Date.now();
             
             showScreen('gameScreen');
+            displayPlayerInfo();
             displaySelectedCharacter();
             displayConflict(0);
             startTimer();
+        }
+
+        function displayPlayerInfo() {
+            document.getElementById('playerNickname').textContent = currentNickname;
         }
 
         function displaySelectedCharacter() {
@@ -718,23 +991,25 @@
             document.getElementById('score').textContent = `점수: ${currentScore}`;
         }
 
-        async function finishGame() {
+        function finishGame() {
             clearInterval(gameTimer);
             
-            let finalMessage = `🎉 게임 완료!\n\n`;
-            finalMessage += `🎯 당신의 스코어: ${currentScore}점\n`;
-            finalMessage += `⏰ 소요시간: ${document.getElementById('timer').textContent}\n`;
-            
+            const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
             const correctCount = Math.floor(currentScore / 100);
             const accuracy = Math.round((correctCount / gameSession.conflicts.length) * 100);
-            finalMessage += `📊 정확도: ${accuracy}%`;
             
-            alert(finalMessage);
-            location.reload();
+            document.getElementById('finalScore').textContent = `${currentScore}점`;
+            document.getElementById('resultSummary').innerHTML = `
+                <p><strong>${currentNickname}</strong>님의 결과</p>
+                <p>📊 정확도: ${accuracy}% (${correctCount}/${gameSession.conflicts.length})</p>
+                <p>⏰ 소요시간: ${elapsedTime}초</p>
+                <p>🎯 난이도: ${selectedDifficulty}</p>
+            `;
+            
+            showScreen('resultScreen');
         }
 
         function startTimer() {
-            let startTime = Date.now();
             gameTimer = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
                 document.getElementById('timer').textContent = `시간: ${elapsed}초`;
@@ -746,6 +1021,179 @@
                 screen.classList.remove('active');
             });
             document.getElementById(screenId).classList.add('active');
+        }
+
+        function createBattleRoom() {
+            if (!selectedDifficulty) {
+                alert('먼저 난이도를 선택해주세요');
+                return;
+            }
+            
+            fetch('/api/battle/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nickname: currentNickname,
+                    difficulty: selectedDifficulty
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.roomId) {
+                    battleRoom = data.roomId;
+                    subscribeToBattleRoom(data.roomId);
+                    document.getElementById('roomInfo').innerHTML = `방 코드: <strong>${data.roomId}</strong>`;
+                    document.getElementById('battleStatus').style.display = 'block';
+                    document.getElementById('playerList').innerHTML = '플레이어 수: 1/2';
+                }
+            })
+            .catch(error => {
+                console.error('방 생성 실패:', error);
+                alert('방 생성에 실패했습니다');
+            });
+        }
+
+        function joinBattleRoom(roomId) {
+            if (!roomId) {
+                roomId = document.getElementById('roomIdInput').value.trim();
+            }
+            
+            if (!roomId) {
+                alert('방 코드를 입력해주세요');
+                return;
+            }
+
+            fetch('/api/battle/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nickname: currentNickname,
+                    roomId: roomId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                battleRoom = data.roomId;
+                subscribeToBattleRoom(roomId);
+                document.getElementById('battleStatus').style.display = 'block';
+                document.getElementById('roomInfo').innerHTML = `방 코드: <strong>${roomId}</strong>`;
+            })
+            .catch(error => {
+                console.error('방 참가 실패:', error);
+                alert('방 참가에 실패했습니다');
+            });
+        }
+
+        function subscribeToBattleRoom(roomId) {
+            if (!stompClient || !stompClient.connected) {
+                setTimeout(() => subscribeToBattleRoom(roomId), 1000);
+                return;
+            }
+
+            stompClient.subscribe('/topic/battle/' + roomId, function(message) {
+                const data = JSON.parse(message.body);
+                handleBattleMessage(data);
+            });
+        }
+
+        function handleBattleMessage(data) {
+            switch(data.type) {
+                case 'player_joined':
+                    updatePlayerList(data);
+                    break;
+                case 'room_ready':
+                    document.getElementById('startBattleBtn').style.display = 'block';
+                    break;
+                case 'game_started':
+                    battleConflicts = data.conflicts;
+                    startBattleGame();
+                    break;
+                case 'progress_update':
+                    updateOpponentProgress(data);
+                    break;
+                case 'game_finished':
+                    showBattleResult(data);
+                    break;
+            }
+        }
+
+        function updatePlayerList(data) {
+            document.getElementById('playerList').innerHTML = `플레이어 수: ${data.playerCount}/2`;
+        }
+
+        function startBattleGame() {
+            currentBattleConflict = 0;
+            myBattleScore = 0;
+            showScreen('battleGameScreen');
+            displayBattleConflict(0);
+            
+            document.getElementById('myInfo').textContent = `나: ${currentNickname}`;
+            document.getElementById('myProgress').textContent = '진행률: 0/3';
+            document.getElementById('myScore').textContent = '점수: 0';
+        }
+
+        function displayBattleConflict(index) {
+            if (battleConflicts[index]) {
+                const conflict = battleConflicts[index];
+                document.getElementById('battleFileHeader').textContent = conflict.fileName;
+                document.getElementById('battleCodeEditor').value = conflict.conflictMarkers;
+            }
+        }
+
+        function submitBattleSolution() {
+            if (!stompClient || !stompClient.connected) {
+                alert('서버와의 연결이 끊어졌습니다');
+                return;
+            }
+            
+            const solution = document.getElementById('battleCodeEditor').value.trim();
+            
+            stompClient.send('/app/battle/solve', {}, JSON.stringify({
+                roomId: battleRoom,
+                nickname: currentNickname,
+                solution: solution,
+                conflictIndex: currentBattleConflict
+            }));
+            
+            currentBattleConflict++;
+            document.getElementById('myProgress').textContent = `진행률: ${currentBattleConflict}/3`;
+            
+            if (currentBattleConflict < 3) {
+                displayBattleConflict(currentBattleConflict);
+            } else {
+                stompClient.send('/app/battle/finish', {}, JSON.stringify({
+                    roomId: battleRoom,
+                    nickname: currentNickname
+                }));
+            }
+        }
+
+        function updateOpponentProgress(data) {
+            if (data.nickname !== currentNickname) {
+                document.getElementById('opponentInfo').textContent = `상대방: ${data.nickname}`;
+                document.getElementById('opponentProgress').textContent = `진행률: ${data.conflictIndex + 1}/3`;
+            } else if (data.correct) {
+                myBattleScore += 100;
+                document.getElementById('myScore').textContent = `점수: ${myBattleScore}`;
+            }
+        }
+
+        function showBattleResult(data) {
+            const winner = data.winner;
+            const scores = data.scores;
+            
+            let resultText = `🏆 승자: ${winner}\n\n점수:\n`;
+            for (const [player, score] of Object.entries(scores)) {
+                resultText += `${player}: ${score}점\n`;
+            }
+            
+            alert(resultText);
+            showScreen('difficultyScreen');
         }
     </script>
 </body>
