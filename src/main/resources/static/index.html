@@ -211,6 +211,7 @@
         .hint {
             background: #fff3cd;
             border: 1px solid #ffeaa7;
+            color: #856404;
             padding: 10px;
             border-radius: 5px;
             margin-top: 15px;
@@ -302,7 +303,7 @@
                     <div class="controls">
                         <button class="btn" id="prevConflictBtn">이전 충돌</button>
                         <button class="btn" id="nextConflictBtn">다음 충돌</button>
-                        <button class="btn" id="checkSolutionBtn">해결 확인</button>
+                        <button class="btn" id="checkSolutionBtn" onclick="checkSolution()">해결 확인</button>
                         <button class="btn" id="submitSolutionBtn" style="display: none;">게임 완료</button>
                     </div>
                 </div>
@@ -365,9 +366,14 @@
         }
 
         function displayConflict(index) {
-            if (!gameSession || !gameSession.conflicts || index >= gameSession.conflicts.length) return;
+            console.log('displayConflict 호출:', index);
+            if (!gameSession || !gameSession.conflicts || index >= gameSession.conflicts.length) {
+                console.log('게임 세션 또는 충돌 데이터 없음');
+                return;
+            }
             
             const conflict = gameSession.conflicts[index];
+            console.log('현재 충돌:', conflict);
             
             document.getElementById('fileHeader').textContent = conflict.fileName;
             document.getElementById('codeEditor').value = conflict.conflictMarkers;
@@ -382,17 +388,24 @@
         }
 
         function checkSolution() {
-            const userSolution = document.getElementById('codeEditor').value;
-            const conflict = gameSession.conflicts[currentConflictIndex];
-            const expectedSolution = conflict.expectedResolution;
+            console.log('checkSolution 호출됨!');
             
-            const userCleaned = userSolution.replace(/\s+/g, ' ').trim();
-            const expectedCleaned = expectedSolution.replace(/\s+/g, ' ').trim();
+            if (!gameSession || !gameSession.conflicts) {
+                console.log('게임 세션이 없음');
+                return;
+            }
+            
+            const userSolution = document.getElementById('codeEditor').value.trim();
+            const conflict = gameSession.conflicts[currentConflictIndex];
+            const expectedSolution = conflict.expectedResolution.trim();
+            
+            console.log('사용자 입력:', userSolution);
+            console.log('정답:', expectedSolution);
             
             const resultDiv = document.getElementById('resultMessage');
             resultDiv.style.display = 'block';
             
-            if (userCleaned === expectedCleaned) {
+            if (userSolution === expectedSolution) {
                 resultDiv.className = 'result-message success';
                 resultDiv.textContent = '🎉 정답! 충돌이 해결되었습니다!';
                 resolvedConflicts[currentConflictIndex] = true;
@@ -411,41 +424,63 @@
             displayConflict(currentConflictIndex);
         }
 
-        document.getElementById('confirmCharacterBtn').addEventListener('click', () => {
-            showScreen('difficultyScreen');
-        });
-
-        document.getElementById('backToCharacterBtn').addEventListener('click', () => {
-            showScreen('characterScreen');
-        });
-
-        document.querySelectorAll('.difficulty-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                selectedDifficulty = btn.dataset.difficulty;
-                document.getElementById('startGameBtn').disabled = false;
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('confirmCharacterBtn').addEventListener('click', () => {
+                showScreen('difficultyScreen');
             });
-        });
 
-        document.getElementById('startGameBtn').addEventListener('click', async () => {
-            try {
-                const response = await fetch('/api/game/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: 1,
-                        difficulty: selectedDifficulty
-                    })
+            document.getElementById('backToCharacterBtn').addEventListener('click', () => {
+                showScreen('characterScreen');
+            });
+
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedDifficulty = btn.dataset.difficulty;
+                    document.getElementById('startGameBtn').disabled = false;
                 });
-                gameSession = await response.json();
-                currentConflictIndex = 0;
-                resolvedConflicts = new Array(gameSession.conflicts.length).fill(false);
-                currentScore = 0;
-                startGame();
-            } catch (error) {
-                console.error('게임 시작 실패:', error);
-            }
+            });
+
+            document.getElementById('startGameBtn').addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/game/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: 1,
+                            difficulty: selectedDifficulty
+                        })
+                    });
+                    gameSession = await response.json();
+                    currentConflictIndex = 0;
+                    resolvedConflicts = new Array(gameSession.conflicts.length).fill(false);
+                    currentScore = 0;
+                    startGame();
+                } catch (error) {
+                    console.error('게임 시작 실패:', error);
+                }
+            });
+
+            document.getElementById('prevConflictBtn').addEventListener('click', () => {
+                if (currentConflictIndex > 0) {
+                    currentConflictIndex--;
+                    displayConflict(currentConflictIndex);
+                }
+            });
+
+            document.getElementById('nextConflictBtn').addEventListener('click', () => {
+                if (currentConflictIndex < gameSession.conflicts.length - 1) {
+                    currentConflictIndex++;
+                    displayConflict(currentConflictIndex);
+                }
+            });
+
+            document.getElementById('submitSolutionBtn').addEventListener('click', () => {
+                alert(`🎉 게임 완료! 최종 점수: ${currentScore}점`);
+            });
+
+            loadCharacters();
         });
 
         function startGame() {
@@ -465,28 +500,6 @@
                 document.getElementById('timer').textContent = `시간: ${elapsed}초`;
             }, 1000);
         }
-
-        document.getElementById('prevConflictBtn').addEventListener('click', () => {
-            if (currentConflictIndex > 0) {
-                currentConflictIndex--;
-                displayConflict(currentConflictIndex);
-            }
-        });
-
-        document.getElementById('nextConflictBtn').addEventListener('click', () => {
-            if (currentConflictIndex < gameSession.conflicts.length - 1) {
-                currentConflictIndex++;
-                displayConflict(currentConflictIndex);
-            }
-        });
-
-        document.getElementById('checkSolutionBtn').addEventListener('click', checkSolution);
-
-        document.getElementById('submitSolutionBtn').addEventListener('click', () => {
-            alert(`🎉 게임 완료! 최종 점수: ${currentScore}점`);
-        });
-
-        loadCharacters();
     </script>
 </body>
 </html>
