@@ -23,7 +23,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'com.oracle.database.jdbc:ojdbc8'
+    implementation 'org.postgresql:postgresql'
     
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -33,4 +33,8 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+jar {
+    enabled = false
 }
