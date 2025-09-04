@@ -121,6 +121,12 @@
            border-bottom: none;
        }
 
+       .player-name-section {
+           display: flex;
+           align-items: center;
+           gap: 8px;
+       }
+
        .player-name {
            color: #ffffff;
            font-weight: 500;
@@ -129,7 +135,19 @@
        .player-role {
            color: #999999;
            font-size: 0.9rem;
-           margin-left: 8px;
+       }
+
+       .ready-indicator {
+           width: 8px;
+           height: 8px;
+           border-radius: 50%;
+           background: #00ff00;
+           box-shadow: 0 0 6px #00ff00;
+           display: none;
+       }
+
+       .ready-indicator.show {
+           display: block;
        }
 
        .player-status {
@@ -164,6 +182,14 @@
            background: #333333;
            color: #666666;
            cursor: not-allowed;
+       }
+
+       .start-button {
+           background: #00aa00 !important;
+       }
+
+       .start-button:hover {
+           background: #00cc00 !important;
        }
 
        input {
@@ -239,7 +265,7 @@
            <div class="player-box" id="playerList"></div>
            
            <button class="action-button" id="readyBtn">준비하기</button>
-           <button class="action-button" id="startGameBtn" style="display: none;">게임 시작</button>
+           <button class="action-button start-button" id="startGameBtn" style="display: none;">게임 시작</button>
            <button class="action-button" id="leaveBtn">방 나가기</button>
            
            <div id="roomStatus" style="color: #999999; margin-top: 20px;"></div>
@@ -259,6 +285,7 @@
                this.nickname = localStorage.getItem('gitmerge_nickname') || '';
                this.currentRoomCode = '';
                this.isHost = false;
+               this.myReadyStatus = false;
                
                this.initializeUI();
                this.bindEvents();
@@ -317,6 +344,7 @@
            createRoom() {
                const roomName = document.getElementById('roomNameInput').value.trim() || '새로운 방';
                this.isHost = true;
+               this.myReadyStatus = false;
                this.updateStatus('방 생성 중...');
                
                this.connectWebSocket(() => {
@@ -336,6 +364,7 @@
                }
                
                this.isHost = false;
+               this.myReadyStatus = false;
                this.updateStatus('방 참가 중...');
                
                this.connectWebSocket(() => {
@@ -352,6 +381,9 @@
            
            toggleReady() {
                if (!this.stompClient?.connected) return;
+               
+               this.myReadyStatus = !this.myReadyStatus;
+               document.getElementById('readyBtn').textContent = this.myReadyStatus ? '준비 취소' : '준비하기';
                
                this.stompClient.send('/app/room/ready', {}, JSON.stringify({
                    nickname: this.nickname
@@ -372,6 +404,7 @@
                    this.stompClient.disconnect();
                }
                this.currentRoomCode = '';
+               this.myReadyStatus = false;
            }
            
            connectWebSocket(onReady) {
@@ -444,6 +477,11 @@
            }
            
            handlePlayerReady(data) {
+               if (data.player === this.nickname) {
+                   this.myReadyStatus = data.ready;
+                   document.getElementById('readyBtn').textContent = this.myReadyStatus ? '준비 취소' : '준비하기';
+               }
+               
                this.updatePlayerList(data.players);
                this.updateStatus(data.player + '님이 준비 상태를 변경했습니다', 'roomStatus');
                this.checkGameStartCondition(data.players);
@@ -465,9 +503,10 @@
                
                playerList.innerHTML = playerArray.map(player => `
                    <div class="player-item">
-                       <div>
+                       <div class="player-name-section">
                            <span class="player-name">${player.nickname}</span>
                            ${player.isHost ? '<span class="player-role">(방장)</span>' : ''}
+                           <div class="ready-indicator ${player.ready ? 'show' : ''}"></div>
                        </div>
                        <div class="player-status ${player.ready ? '' : 'waiting'}">
                            ${player.ready ? '준비완료' : '대기중'}
@@ -478,14 +517,18 @@
            
            checkGameStartCondition(players) {
                const playerArray = Object.values(players || {});
-               const allReady = playerArray.every(p => p.ready);
+               const allReady = playerArray.length > 0 && playerArray.every(p => p.ready);
                const hasMinPlayers = playerArray.length >= 2;
                
                const startBtn = document.getElementById('startGameBtn');
-               startBtn.style.display = (this.isHost && allReady && hasMinPlayers) ? 'block' : 'none';
-               
-               if (allReady && hasMinPlayers) {
-                   this.updateStatus('모든 플레이어가 준비되었습니다!', 'roomStatus');
+               if (this.isHost && allReady && hasMinPlayers) {
+                   startBtn.style.display = 'block';
+                   this.updateStatus('모든 플레이어가 준비되었습니다! 게임을 시작할 수 있습니다.', 'roomStatus');
+               } else {
+                   startBtn.style.display = 'none';
+                   if (this.isHost && hasMinPlayers && !allReady) {
+                       this.updateStatus('모든 플레이어가 준비될 때까지 기다려주세요.', 'roomStatus');
+                   }
                }
            }
            
