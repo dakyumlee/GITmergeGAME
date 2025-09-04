@@ -425,7 +425,23 @@
            color: #999999;
            font-size: 0.9rem;
        }
-   </style>
+   @media (max-width: 768px) {
+.container { max-width: none; padding: 20px; }
+.screen { padding: 30px; }
+.title { font-size: 2rem; }
+.character-grid { grid-template-columns: 1fr; gap: 15px; }
+.difficulty-selector { flex-direction: column; align-items: center; }
+.difficulty-btn { width: 100%; max-width: 300px; }
+.game-area { grid-template-columns: 1fr; gap: 20px; }
+}
+@media (max-width: 480px) {
+.container { padding: 15px; }
+.screen { padding: 20px; }
+.title { font-size: 1.8rem; }
+.btn { padding: 12px 25px; font-size: 1rem; }
+}
+input, .btn { min-height: 48px; }
+</style>
 </head>
 <body>
    <div class="container">
