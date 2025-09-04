@@ -3,11 +3,13 @@ package com.gitmerge.controller;
 import com.gitmerge.enums.Difficulty;
 import com.gitmerge.service.GameLogicService;
 import com.gitmerge.service.GameLogicService.*;
+import com.gitmerge.service.AchievementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/game")
@@ -88,6 +90,40 @@ public class GameController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+    
+    @PostMapping("/finish-with-achievements/{sessionId}")
+    public ResponseEntity<?> finishGameWithAchievements(@PathVariable String sessionId) {
+        try {
+            GameResultWithAchievements result = gameLogicService.finishGameWithAchievements(sessionId);
+            
+            if (result == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Session not found"));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "gameResult", convertToMap(result.getGameResult()),
+                "newAchievements", result.getNewAchievements(),
+                "hasNewAchievements", result.hasNewAchievements()
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    private Map<String, Object> convertToMap(GameResult result) {
+        return Map.of(
+            "sessionId", result.getSessionId(),
+            "totalScore", result.getTotalScore(),
+            "correctCount", result.getCorrectCount(),
+            "totalConflicts", result.getTotalConflicts(),
+            "accuracy", result.getAccuracy(),
+            "cleanliness", result.getCleanliness(),
+            "elapsedTime", result.getElapsedTime(),
+            "status", result.getStatus().toString(),
+            "difficulty", result.getDifficulty().toString()
+        );
     }
     
     public static class StartGameRequest {

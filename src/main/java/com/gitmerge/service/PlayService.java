@@ -36,7 +36,7 @@ public class PlayService {
         
         Result savedResult = resultRepository.save(result);
         
-        achievementService.checkAndGrant(user, savedResult);
+        // achievementService.checkAchievements(user.getId(), savedResult);
         
         return savedResult;
     }

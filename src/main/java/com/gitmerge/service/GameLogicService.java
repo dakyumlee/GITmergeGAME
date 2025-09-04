@@ -17,6 +17,9 @@ public class GameLogicService {
     @Autowired
     private ConflictGeneratorService conflictGenerator;
     
+    @Autowired
+    private AchievementService achievementService;
+    
     private static final int BASE_SCORE = 1000;
     private static final Map<Difficulty, Integer> TIME_LIMITS = Map.of(
         Difficulty.EASY, 300,
@@ -107,6 +110,16 @@ public class GameLogicService {
             .elapsedTime(elapsedTime)
             .status(session.getStatus())
             .build();
+    }
+    
+    public GameResultWithAchievements finishGameWithAchievements(String sessionId) {
+        GameResult result = finishGame(sessionId);
+        if (result == null) return null;
+        
+        List<AchievementService.AchievementUnlocked> achievements = 
+            achievementService.checkAchievements(result.getUserId(), result);
+        
+        return new GameResultWithAchievements(result, achievements);
     }
     
     private boolean validateResolution(ConflictBlock conflict, String resolution) {
@@ -227,6 +240,20 @@ public class GameLogicService {
             
             public GameResult build() { return result; }
         }
+    }
+    
+    public static class GameResultWithAchievements {
+        private final GameResult gameResult;
+        private final List<AchievementService.AchievementUnlocked> newAchievements;
+        
+        public GameResultWithAchievements(GameResult gameResult, List<AchievementService.AchievementUnlocked> newAchievements) {
+            this.gameResult = gameResult;
+            this.newAchievements = newAchievements;
+        }
+        
+        public GameResult getGameResult() { return gameResult; }
+        public List<AchievementService.AchievementUnlocked> getNewAchievements() { return newAchievements; }
+        public boolean hasNewAchievements() { return !newAchievements.isEmpty(); }
     }
     
     public enum GameStatus {

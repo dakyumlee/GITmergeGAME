@@ -542,3 +542,190 @@ function calculateTotal(items) {
     </script>
 </body>
 </html>
+
+    <div class="achievement-popup" id="achievementPopup" style="display: none;">
+        <div class="achievement-content">
+            <div class="achievement-icon">🏆</div>
+            <div class="achievement-info">
+                <div class="achievement-title">업적 달성!</div>
+                <div class="achievement-name" id="achievementName">첫 머지</div>
+                <div class="achievement-desc" id="achievementDesc">첫 번째 충돌을 성공적으로 해결했습니다!</div>
+                <div class="achievement-points">+<span id="achievementPoints">10</span>점</div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #111111;
+            border: 1px solid #6366f1;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 320px;
+            z-index: 1000;
+            animation: achievementSlide 0.5s ease-out;
+        }
+
+        .achievement-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .achievement-icon {
+            font-size: 32px;
+        }
+
+        .achievement-info {
+            flex: 1;
+        }
+
+        .achievement-title {
+            font-size: 11px;
+            color: #6366f1;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .achievement-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e8e8e8;
+            margin-bottom: 4px;
+        }
+
+        .achievement-desc {
+            font-size: 13px;
+            color: #737373;
+            margin-bottom: 8px;
+        }
+
+        .achievement-points {
+            font-size: 12px;
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        @keyframes achievementSlide {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .achievement-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .achievement-modal-content {
+            background: #111111;
+            border: 1px solid #1a1a1a;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .achievement-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .achievement-item {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            text-align: left;
+        }
+
+        .achievement-item.unlocked {
+            border-color: #6366f1;
+            background: #0f0f23;
+        }
+    </style>
+
+    <script>
+        let achievements = [];
+        
+        async function finishGame() {
+            try {
+                const response = await fetch(API_URL + '/finish-with-achievements/' + currentSession, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                clearInterval(gameTimer);
+                
+                if (result.hasNewAchievements) {
+                    showAchievementPopups(result.newAchievements);
+                }
+                
+                setTimeout(() => {
+                    alert(`게임 완료!\n총 점수: ${result.gameResult.totalScore}점\n정확도: ${result.gameResult.accuracy}%`);
+                    location.reload();
+                }, result.hasNewAchievements ? 3000 : 0);
+                
+            } catch (error) {
+                console.error('게임 종료 실패:', error);
+            }
+        }
+        
+        function showAchievementPopups(newAchievements) {
+            newAchievements.forEach((achievement, index) => {
+                setTimeout(() => {
+                    showAchievementPopup(achievement);
+                }, index * 1000);
+            });
+        }
+        
+        function showAchievementPopup(achievement) {
+            document.getElementById('achievementName').textContent = achievement.name;
+            document.getElementById('achievementDesc').textContent = achievement.description;
+            document.getElementById('achievementPoints').textContent = achievement.points;
+            
+            const popup = document.getElementById('achievementPopup');
+            popup.style.display = 'block';
+            
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 4000);
+        }
+        
+        async function loadUserAchievements(userId) {
+            try {
+                const response = await fetch(`http://localhost:8081/api/achievements/user/${userId}`);
+                const data = await response.json();
+                achievements = data.achievements;
+                
+                console.log(`총 업적 점수: ${data.totalPoints}점`);
+                
+            } catch (error) {
+                console.error('업적 로딩 실패:', error);
+            }
+        }
+        
+        loadUserAchievements(1);
+    </script>

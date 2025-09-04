@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  gitmerge-game:
+    build: .
+    ports:
+      - "8081:8081"
+    depends_on:
+      - oracle
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    environment:
+      ORACLE_PASSWORD: password
+    ports:
+      - "1521:1521"
