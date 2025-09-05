@@ -154,11 +154,6 @@ src/main/
 
 ⸻
 
-
-<div align="center">
-
-
 ⭐ Git Merge Game 에 접속해서 지금 바로 도전해보세요! ⭐
 
-</div>
 ```
