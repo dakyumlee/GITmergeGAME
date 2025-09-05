@@ -451,6 +451,26 @@
             font-weight: bold;
         }
 
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .connection-status.connected {
+            background: #1a4a1a;
+            color: #00ff00;
+        }
+
+        .connection-status.disconnected {
+            background: #4a1a1a;
+            color: #ff4444;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 15px; }
             .title { font-size: 2rem; }
@@ -475,6 +495,8 @@
     </style>
 </head>
 <body>
+    <div class="connection-status disconnected" id="connectionStatus">연결 중...</div>
+    
     <div class="container">
         <div class="screen active" id="menuScreen">
             <h1 class="title">Git Merge Battle</h1>
@@ -584,9 +606,62 @@
                 this.gameScore = 0;
                 this.gameTimer = null;
                 this.gameStartTime = null;
+                this.connected = false;
                 
                 this.initializeUI();
                 this.bindEvents();
+                this.connectWebSocket();
+            }
+            
+            connectWebSocket() {
+                const socket = new SockJS('/ws/match');
+                this.stompClient = Stomp.over(socket);
+                
+                this.stompClient.connect({}, (frame) => {
+                    console.log('WebSocket 연결 성공:', frame);
+                    this.connected = true;
+                    this.updateConnectionStatus(true);
+                    this.subscribeToTopics();
+                }, (error) => {
+                    console.error('WebSocket 연결 실패:', error);
+                    this.connected = false;
+                    this.updateConnectionStatus(false);
+                    setTimeout(() => this.connectWebSocket(), 3000);
+                });
+            }
+            
+            subscribeToTopics() {
+                this.stompClient.subscribe('/topic/room-created', (message) => {
+                    const data = JSON.parse(message.body);
+                    this.handleRoomCreated(data);
+                });
+                
+                this.stompClient.subscribe('/queue/error', (message) => {
+                    const data = JSON.parse(message.body);
+                    alert(data.message);
+                });
+            }
+            
+            subscribeToRoom(roomCode) {
+                if (this.roomSubscription) {
+                    this.roomSubscription.unsubscribe();
+                }
+                
+                this.roomSubscription = this.stompClient.subscribe(`/topic/room/${roomCode}`, (message) => {
+                    const data = JSON.parse(message.body);
+                    this.handleRoomMessage(data);
+                });
+            }
+            
+            updateConnectionStatus(connected) {
+                const status = document.getElementById('connectionStatus');
+                if (connected) {
+                    status.textContent = '연결됨';
+                    status.className = 'connection-status connected';
+                } else {
+                    status.textContent = '연결 끊김';
+                    status.className = 'connection-status disconnected';
+                }
             }
             
             initializeUI() {
@@ -636,40 +711,29 @@
                     document.getElementById('nicknameInput').focus();
                     return;
                 }
-                this.showScreen(screenId);
-            }
-            
-            generateRoomCode() {
-                return Math.random().toString(36).substr(2, 6).toUpperCase();
-            }
-            
-            updateStatus(message, elementId = 'status') {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.textContent = message;
+                
+                if (!this.connected) {
+                    alert('서버에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                    return;
                 }
+                
+                this.showScreen(screenId);
             }
             
             createRoom() {
                 const roomName = document.getElementById('roomNameInput').value.trim() || '내 방';
-                this.isHost = true;
-                this.myReadyStatus = false;
-                this.updateStatus('방 생성 중...');
                 
-                this.currentRoomCode = this.generateRoomCode();
-                document.getElementById('displayRoomCode').textContent = this.currentRoomCode;
-                document.getElementById('displayRoomName').textContent = roomName;
+                if (!this.connected || !this.stompClient) {
+                    alert('서버에 연결되지 않았습니다');
+                    return;
+                }
                 
-                const players = {};
-                players[this.nickname] = {
+                this.stompClient.send('/app/room/create', {}, JSON.stringify({
                     nickname: this.nickname,
-                    ready: false,
-                    isHost: true
-                };
+                    roomName: roomName
+                }));
                 
-                this.updatePlayerList(players);
-                this.updateStatus('방 생성 완료');
-                this.showScreen('roomScreen');
+                this.updateStatus('방 생성 중...');
             }
             
             joinRoom() {
@@ -680,49 +744,96 @@
                     return;
                 }
                 
-                this.isHost = false;
-                this.myReadyStatus = false;
-                this.currentRoomCode = roomCode;
+                if (!this.connected || !this.stompClient) {
+                    alert('서버에 연결되지 않았습니다');
+                    return;
+                }
                 
-                document.getElementById('displayRoomCode').textContent = roomCode;
-                document.getElementById('displayRoomName').textContent = '참가한 방';
-                
-                const players = {};
-                players[this.nickname] = {
+                this.stompClient.send('/app/room/join', {}, JSON.stringify({
                     nickname: this.nickname,
-                    ready: false,
-                    isHost: false
-                };
+                    roomCode: roomCode
+                }));
                 
-                this.updatePlayerList(players);
-                this.updateStatus('방 입장 완료', 'roomStatus');
+                this.currentRoomCode = roomCode;
+                this.subscribeToRoom(roomCode);
+                this.updateStatus('방 입장 중...');
+            }
+            
+            handleRoomCreated(data) {
+                this.currentRoomCode = data.roomCode;
+                this.isHost = data.creator === this.nickname;
+                
+                document.getElementById('displayRoomCode').textContent = data.roomCode;
+                document.getElementById('displayRoomName').textContent = data.roomName;
+                
+                this.updatePlayerList(data.players);
+                this.subscribeToRoom(data.roomCode);
+                this.updateStatus('방 생성 완료');
                 this.showScreen('roomScreen');
             }
             
+            handleRoomMessage(data) {
+                switch (data.type) {
+                    case 'PLAYER_JOINED':
+                        this.updatePlayerList(data.players);
+                        
+                        if (data.newPlayer === this.nickname) {
+                            document.getElementById('displayRoomCode').textContent = data.roomCode;
+                            document.getElementById('displayRoomName').textContent = data.roomName;
+                            this.showScreen('roomScreen');
+                            this.updateStatus('방 입장 완료', 'roomStatus');
+                        } else if (data.newPlayer && data.newPlayer !== this.nickname) {
+                            this.updateStatus(`${data.newPlayer}님이 입장했습니다`, 'roomStatus');
+                        }
+                        break;
+                        
+                    case 'PLAYER_READY':
+                        this.updatePlayerList(data.players);
+                        this.checkGameStartCondition(data.players);
+                        break;
+                        
+                    case 'GAME_START':
+                        this.handleGameStart();
+                        break;
+                }
+            }
+            
             toggleReady() {
+                if (!this.connected || !this.stompClient) return;
+                
                 this.myReadyStatus = !this.myReadyStatus;
                 document.getElementById('readyBtn').textContent = this.myReadyStatus ? '준비 취소' : '준비하기';
                 
-                const players = {};
-                players[this.nickname] = {
-                    nickname: this.nickname,
-                    ready: this.myReadyStatus,
-                    isHost: this.isHost
-                };
-                
-                this.updatePlayerList(players);
-                this.checkGameStartCondition(players);
+                this.stompClient.send('/app/room/ready', {}, JSON.stringify({
+                    nickname: this.nickname
+                }));
             }
             
             startGame() {
-                if (!this.isHost) return;
-                this.handleGameStart();
+                if (!this.isHost || !this.connected || !this.stompClient) return;
+                
+                this.stompClient.send('/app/room/start', {}, JSON.stringify({
+                    nickname: this.nickname
+                }));
             }
             
             leaveRoom() {
+                if (this.connected && this.stompClient && this.currentRoomCode) {
+                    this.stompClient.send('/app/room/leave', {}, JSON.stringify({
+                        nickname: this.nickname,
+                        roomCode: this.currentRoomCode
+                    }));
+                }
+                
+                if (this.roomSubscription) {
+                    this.roomSubscription.unsubscribe();
+                    this.roomSubscription = null;
+                }
+                
                 this.showScreen('menuScreen');
                 this.currentRoomCode = '';
                 this.myReadyStatus = false;
+                this.isHost = false;
                 document.getElementById('readyBtn').textContent = '준비하기';
             }
             
@@ -762,11 +873,11 @@ function calculateTotal(items) {
 }
 =======
 function calculateTotal(items) {
-    return items.reduce((sum, item) => sum + item.amount, 0);
+    return items.reduce((sum, item) => sum + item.price, 0);
 }
 >>>>>>> incoming`,
                                 expectedResolution: `function calculateTotal(items) {
-    return items.reduce((sum, item) => sum + item.amount, 0);
+    return items.reduce((sum, item) => sum + item.price, 0);
 }`
                             },
                             {
@@ -857,11 +968,6 @@ export const config = {
                 const normalizedInput = userInput.replace(/\s+/g, ' ').trim();
                 const normalizedExpected = expectedSolution.replace(/\s+/g, ' ').trim();
                 
-                console.log('로컬 검증:');
-                console.log('사용자 입력:', normalizedInput);
-                console.log('정답:', normalizedExpected);
-                console.log('일치 여부:', normalizedInput === normalizedExpected);
-                
                 if (normalizedInput === normalizedExpected) {
                     this.handleCorrectAnswer();
                 } else {
@@ -887,7 +993,6 @@ export const config = {
                 }
 
                 const result = await response.json();
-                console.log('API 검증 결과:', result);
                 
                 if (result.correct) {
                     this.handleCorrectAnswer();
@@ -1020,14 +1125,12 @@ export const config = {
                 const playerList = document.getElementById('playerList');
                 if (!playerList) return;
                 
-                const playerArray = Object.values(players || {});
-                
-                if (playerArray.length === 0) {
+                if (!players || players.length === 0) {
                     playerList.innerHTML = '<div style="text-align: center; color: #999999;">플레이어가 없습니다</div>';
                     return;
                 }
                 
-                playerList.innerHTML = playerArray.map(player => `
+                playerList.innerHTML = players.map(player => `
                     <div class="player-item">
                         <div class="player-name-section">
                             <span class="player-name">${player.nickname}</span>
@@ -1042,9 +1145,10 @@ export const config = {
             }
             
             checkGameStartCondition(players) {
-                const playerArray = Object.values(players || {});
-                const allReady = playerArray.length >= 1 && playerArray.every(p => p.ready);
-                const hasMinPlayers = playerArray.length >= 1;
+                if (!players) return;
+                
+                const allReady = players.length >= 1 && players.every(p => p.ready);
+                const hasMinPlayers = players.length >= 1;
                 
                 const startBtn = document.getElementById('startGameBtn');
                 if (!startBtn) return;
@@ -1057,6 +1161,13 @@ export const config = {
                     if (this.isHost && hasMinPlayers && !allReady) {
                         this.updateStatus('모든 플레이어가 준비될 때까지 기다려주세요.', 'roomStatus');
                     }
+                }
+            }
+            
+            updateStatus(message, elementId = 'status') {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.textContent = message;
                 }
             }
             
