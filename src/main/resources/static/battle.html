@@ -1058,18 +1058,63 @@ export const config = {
                 this.updateLeaderboard();
             }
             
+            sendScoreUpdate() {
+                if (this.connected && this.stompClient && this.currentRoomCode) {
+                    const solved = this.resolvedConflicts.filter(r => r).length;
+                    this.stompClient.send('/app/game/progress', {}, JSON.stringify({
+                        roomCode: this.currentRoomCode,
+                        nickname: this.nickname,
+                        score: this.gameScore,
+                        solved: solved
+                    }));
+                }
+            }
+            
             updateLeaderboard() {
                 const leaderboard = document.getElementById("gameLeaderboard");
                 if (!leaderboard) return;
                 
-                const solved = this.resolvedConflicts.filter(r => r).length;
-                leaderboard.innerHTML = `
+                const myData = {
+                    nickname: this.nickname,
+                    score: this.gameScore,
+                    solved: this.resolvedConflicts.filter(r => r).length
+                };
+                
+                let players = [myData];
+                if (this.roomPlayers && this.roomPlayers.length > 0) {
+                    players = this.roomPlayers.map(player => ({
+                        nickname: player.nickname,
+                        score: player.score || 0,
+                        solved: player.solved || 0
+                    }));
+                    
+                    const myPlayerIndex = players.findIndex(p => p.nickname === this.nickname);
+                    if (myPlayerIndex >= 0) {
+                        players[myPlayerIndex] = myData;
+                    }
+                }
+                
+                players.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    return b.solved - a.solved;
+                });
+                
+                leaderboard.innerHTML = players.map((player, index) => `
                     <div class="leaderboard-item">
-                        <span class="player-rank">#1</span>
-                        <span>${this.nickname}</span>
-                        <span>${this.gameScore}점 (${solved}해결)</span>
+                        <span class="player-rank">#${index + 1}</span>
+                        <span>${player.nickname}</span>
+                        <span>${player.score}점 (${player.solved}해결)</span>
                     </div>
-                `;
+                `).join('');
+            }
+            
+            updateRealTimeLeaderboard(players) {
+                this.roomPlayers = players.map(player => ({
+                    ...player,
+                    score: player.score || 0,
+                    solved: player.solved || 0
+                }));
+                this.updateLeaderboard();
             }
             
             updateGameProgress() {
