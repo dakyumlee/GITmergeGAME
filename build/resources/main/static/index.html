@@ -425,6 +425,25 @@
            color: #999999;
            font-size: 0.9rem;
        }
+       
+       @media (max-width: 768px) {
+           .container { max-width: none; padding: 20px; }
+           .screen { padding: 30px; }
+           .header h1 { font-size: 2rem; }
+           .mode-grid { grid-template-columns: 1fr; gap: 15px; }
+           .difficulty-grid { grid-template-columns: 1fr; }
+           .game-content { flex-direction: column; }
+           .game-sidebar { width: 100%; border-left: none; border-top: 1px solid #333; }
+       }
+       
+       @media (max-width: 480px) {
+           .container { padding: 15px; }
+           .screen { padding: 20px; }
+           .header h1 { font-size: 1.8rem; }
+           .btn { padding: 12px 25px; font-size: 1rem; }
+       }
+       
+       input, .btn { min-height: 48px; }
    </style>
 </head>
 <body>
@@ -432,7 +451,7 @@
        <div class="screen active" id="nicknameScreen">
            <div class="header">
                <h1>Git Merge Game</h1>
-               <p class="subtitle">당신의 Git merge 실력을 테스트해보세요</p>
+               <p class="subtitle">당신의 git merge 실력을 테스트해보세요</p>
            </div>
            <input type="text" id="nicknameInput" placeholder="닉네임을 입력하세요" maxlength="16">
            <button class="btn" id="enterBtn" disabled>입장하기</button>
@@ -563,6 +582,7 @@
        let currentSession = null;
        let gameStartTime = null;
        let gameTimer = null;
+       let currentConflictIndex = 0;
        
        document.getElementById('nicknameInput').addEventListener('input', function() {
            document.getElementById('enterBtn').disabled = this.value.trim().length < 2;
@@ -609,6 +629,7 @@
                    const data = await response.json();
                    currentSession = data;
                    gameStartTime = Date.now();
+                   currentConflictIndex = 0;
                    displayConflict();
                    document.getElementById('gameContainer').classList.add('active');
                    startTimer();
@@ -621,17 +642,23 @@
        }
        
        function displayConflict() {
-           if (!currentSession || !currentSession.conflicts) return;
+           if (!currentSession || !currentSession.conflicts || !currentSession.conflicts[currentConflictIndex]) return;
            
-           const conflict = currentSession.conflicts[0];
+           const conflict = currentSession.conflicts[currentConflictIndex];
            document.getElementById('fileHeader').textContent = conflict.fileName;
            document.getElementById('codeEditor').value = conflict.conflictMarkers;
-           document.getElementById('questionStatus').textContent = `1/${currentSession.totalConflicts}`;
+           document.getElementById('questionStatus').textContent = `${currentConflictIndex + 1}/${currentSession.totalConflicts}`;
        }
        
        async function submitAnswer() {
-           const answer = document.getElementById('codeEditor').value.trim();
-           const conflict = currentSession.conflicts[0];
+           const answer = document.getElementById("codeEditor").value.trim();
+           
+           if (!currentSession || !currentSession.conflicts || !currentSession.conflicts[currentConflictIndex]) {
+               alert('게임 세션 오류');
+               return;
+           }
+           
+           const conflict = currentSession.conflicts[currentConflictIndex];
            
            try {
                const response = await fetch('/api/game/resolve', {
@@ -654,9 +681,16 @@
                        updateWrongCount();
                    }
                    
-                   if (result.gameCompleted) {
-                       setTimeout(showFinalResult, 2000);
-                   }
+                   setTimeout(() => {
+                       if (result.gameCompleted) {
+                           showFinalResult();
+                       } else {
+                           currentConflictIndex++;
+                           displayConflict();
+                       }
+                   }, 1500);
+               } else {
+                   alert('답안 제출 실패');
                }
            } catch (error) {
                alert('제출 오류');
@@ -665,13 +699,13 @@
        
        function showResult(result) {
            const messageDiv = document.getElementById('resultMessage');
-           messageDiv.textContent = result.correct ? '정답입니다!' : '틀렸습니다. 다시 시도하세요.';
+           messageDiv.textContent = result.correct ? '정답입니다!' : '틀렸습니다. 다음 문제로 넘어갑니다.';
            messageDiv.className = result.correct ? 'result-message success' : 'result-message error';
            messageDiv.style.display = 'block';
            
            setTimeout(() => {
                messageDiv.style.display = 'none';
-           }, 2000);
+           }, 1400);
        }
        
        function updateCorrectCount() {
@@ -695,9 +729,12 @@
                    
                    document.getElementById('finalScore').textContent = result.totalScore;
                    document.getElementById('accuracyRate').textContent = result.accuracy + '%';
+                   
+                   const minutes = Math.floor(result.elapsedTime / 60);
+                   const seconds = result.elapsedTime % 60;
                    document.getElementById('finalTime').textContent = 
-                       Math.floor(result.elapsedTime / 60) + ':' + 
-                       String(result.elapsedTime % 60).padStart(2, '0');
+                       String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                   
                    document.getElementById('totalSolved').textContent = 
                        `${result.correctCount}/${result.totalConflicts}`;
                    document.getElementById('cleanlinessScore').textContent = result.cleanliness + '%';
@@ -717,10 +754,9 @@
                    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
                    const minutes = Math.floor(elapsed / 60);
                    const seconds = elapsed % 60;
-                   document.getElementById('timeElapsed').textContent = 
-                       String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-                   document.getElementById('gameTimer').textContent = 
-                       String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                   const timeString = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+                   document.getElementById('timeElapsed').textContent = timeString;
+                   document.getElementById('gameTimer').textContent = timeString;
                }
            }, 1000);
        }

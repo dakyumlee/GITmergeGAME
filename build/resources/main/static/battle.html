@@ -450,6 +450,28 @@
             color: #00aa00;
             font-weight: bold;
         }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .title { font-size: 2rem; }
+            .btn-group { grid-template-columns: 1fr; }
+            .room-code { font-size: 2rem; letter-spacing: 3px; }
+            .game-content { flex-direction: column; }
+            .game-sidebar { width: 100%; border-left: none; border-top: 1px solid #333; }
+            .code-editor { height: 250px; font-size: 13px; }
+            .game-controls { grid-template-columns: 1fr 1fr; }
+            .game-button.primary { grid-column: span 2; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            .title { font-size: 1.8rem; }
+            .room-code { font-size: 1.5rem; }
+            .game-header { padding: 10px 15px; }
+            .timer, .score-display { font-size: 0.85rem; }
+        }
+
+        input, .action-button, .game-button { min-height: 48px; }
     </style>
 </head>
 <body>
@@ -928,6 +950,21 @@ export const config = {
                 if (scoreElement) {
                     scoreElement.textContent = this.gameScore;
                 }
+                this.updateLeaderboard();
+            }
+            
+            updateLeaderboard() {
+                const leaderboard = document.getElementById("gameLeaderboard");
+                if (!leaderboard) return;
+                
+                const solved = this.resolvedConflicts.filter(r => r).length;
+                leaderboard.innerHTML = `
+                    <div class="leaderboard-item">
+                        <span class="player-rank">#1</span>
+                        <span>${this.nickname}</span>
+                        <span>${this.gameScore}점 (${solved}해결)</span>
+                    </div>
+                `;
             }
             
             updateGameProgress() {
