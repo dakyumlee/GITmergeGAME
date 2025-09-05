@@ -5,7 +5,7 @@
 
 ---
 
-## 🌍 공식 사이트  
+## 🌍 PLAY
 
 👉 [**Git Merge Game**](https://gitmerge-game-unique-b6e49309b9df.herokuapp.com)  
 
